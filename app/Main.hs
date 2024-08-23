@@ -16,8 +16,8 @@ import           System.IO               hiding ( print )
 import           Text.PrettyPrint.HughesPJ      ( render
                                                 , text
                                                 )
-import           Text.ICalendar (VCalendar, VEvent(..), DTStamp(..), dtStamp, event)
-import           Text.ICalendar.Printer (printICalendar)
+import           ICal.Org
+import           Data.Text (pack)
 import           Data.Time (Day, fromGregorian)
 import           Data.VCard
 
@@ -28,11 +28,6 @@ import           Parse
 ---------------------
 --- Interpreter
 ---------------------
-
--- Función para crear un evento de calendario
-crearEvento :: Day -> String -> String -> VEvent
-crearEvento f r d =
-  mkVEvent 1 f (Just r) Nothing Nothing Nothing Nothing Nothing Nothing (Just d) Nothing Nothing Nothing Nothing
 
 -- Función principal
 main :: IO ()
@@ -215,11 +210,7 @@ helpTxt cs =
              in  ct ++ replicate ((24 - length ct) `max` 2) ' ' ++ d
            )
            cs
-         )
-
-exportToICal :: FilePath -> [Event] -> IO ()
-exportToICal file events = do contents <- readFile file
-                     
+         )                
 
 compileFiles :: [String] -> State -> InputT IO State
 compileFiles xs s =

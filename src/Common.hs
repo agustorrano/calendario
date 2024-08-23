@@ -19,8 +19,8 @@ data EventWithoutCat = EventWithoutCat { summary :: String
                                        , endTime :: DateTime
                                        } deriving Show
 
-data Event = ENoCategory EventWithoutCat
-           | ECategory EventWithCat deriving Show
+data Event = ENoCat EventWithoutCat
+           | ECat EventWithCat deriving Show
 
 data Calendar = Calendar [Event]
 
