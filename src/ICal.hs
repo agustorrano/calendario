@@ -39,4 +39,14 @@ exportToICal file events = do
       body = concatMap eventToICal events
       icalFile = hdr ++ body ++ body
   in writeFile file icalFile
+
+-- REVISAR: primer acercamiento
+importICal :: FilePath -> IO [Event]
+importICal file = do 
+  cal <- readFile file
+  let events = parseCal cal
+  in return events
+
+updateCalendar :: [Event] -> [Event] -> [Event]
+updateCalendar oldEv newEv = oldEv ++ newEv
       

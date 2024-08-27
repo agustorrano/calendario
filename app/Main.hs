@@ -52,7 +52,7 @@ data State = S
 
 --  read-eval-print loop
 readevalprint :: [String] -> State -> InputT IO ()
-readevalprint args state@(S inter lfile ve) =
+readevalprint args state@(S inter lfile) =
   let rec st = do
         mx <- MC.catch
           (if inter then getInputLine iprompt else lift $ fmap Just getLine)
@@ -73,10 +73,10 @@ readevalprint args state@(S inter lfile ve) =
           ++ "Escriba :? para recibir ayuda."
           )
         --  enter loop
-        rec state' { inter = Tru }
+        rec state' { inter = True }
 
 data CalCom = NewCalendar Name
-            | NewEvent DateTime String Category
+            | NewEvent String DateTime DateTime (Maybe Category)
             | AddEvent Event
             | DeleteEvent Event
             | ThisDay
@@ -93,7 +93,8 @@ data InterCom = Compile ComepileForm
               | Ops
               | Save
               | Close 
-              | Export String deriving Show
+              | Export String 
+              | Import String deriving Show
 
 data CompileForm = CompileInteractive  String
                  | CompileFile         String
@@ -160,6 +161,9 @@ handleInter state@(S inter lfile ve) cmd = case cmd of
   Export f -> do
     cal <- lift $ exportToICal f ve
     return (Just state)
+  Import f -> do
+    cal <- lift $ importICal f
+    return (Just state { lfile = f, ve = updateCalendar ve cal })
 
 handleCal :: State -> Calendar -> CalCom -> InputT IO (Maybe State)
 handleCal state cal cmd = case cmd of
@@ -177,6 +181,7 @@ commands =
   , Cmd [":save", ":s"] "" (const Save) "Guardar el calendario actual"
   , Cmd [":close", ":c"] "" (const Close) "Cerrar y guardar el calendario actual"
   , Cmd [":export", ":e"] "<file>" (Export) "Exportar un calendario a un archivo .ical"
+  , Cmd [":import", ":i"] "<file>" (Import) "Importar un calendario .ical"
   ]
 
 -- Parseo de comandos de calendario

@@ -18,8 +18,10 @@ printDate date =
 
 -- Imprime un evento
 printEvent :: Event -> Doc
-printEvent (Event t d c) = 
-  text "event" <+> printDate d <+> text t <+> text c
+printEvent (ENoCat (EventWithoutCat s st et)) = 
+  text "Event" <+> text s <+> printDate st <+> printDate et
+printEvent (ECat (EventWithCat s st et c)) =
+  text "Event" <+> text s <+> printDate st <+> printDate et <+> text c
 
 -- Imprime una lista
 printList :: [a] -> (a -> Doc) -> Doc

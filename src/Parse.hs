@@ -27,13 +27,13 @@ lisComm = makeTokenParser
 -- Parsea los comandos
 parseComm :: Parser (CalCom)
 parseComm = try parseNCalendar
-            <|> try parseNEvent
-            <|> try parseAEvent
-            <|> try parseDEvent
-            <|> try parseDay
-            <|> try parseWeek
-            <|> try parseMonth
-            <|> try parseAllEvents
+        <|> try parseNEvent
+        <|> try parseAEvent
+        <|> try parseDEvent
+        <|> try parseDay
+        <|> try parseWeek
+        <|> try parseMonth
+        <|> try parseAllEvents
 
 parseCal :: String -> Either ParseError CalCom
 parseCal s = parse parseComm "" s
@@ -47,10 +47,11 @@ parseNCalendar = do reserved lisComm "newCalendar"
 -- Parsea la operación para crear un nuevo evento
 parseNEvent :: Parser Comm
 parseNEvent = do reserved lisComm "newEvent"
-                 date <- parseDate
-                 title <- parseStr
-                 category <- parseCat
-                 return (NewEvent dat title category)
+                 summary <- parseStr
+                 sDate <- parseDate
+                 eDate <- parseDate
+                 category <- optionMaybe parseStr
+                 return (NewEvent summary sDate eDate category)
 
 -- Parsea la operación para agregar un evento
 parseAEvent :: Parser Comm
@@ -122,26 +123,16 @@ parseDate = do day <- integer lis
 -- Parsea un evento
 parseEvent :: Parser Event
 parseEvent = try (do reserved lis "event"
-                     t <- title
-                     d <- description
+                     s <- parseStr
                      st <- parseDate
                      et <- parseDate
-                     c <- category
-                     return (Event t d st et c))
-             <|> (do t <- title
+                     c <- parseStr
+                     return (ECat (EventWithCat s st et c)))
+             <|> (do reserved lis "event"
+                     s <- parseStr
                      st <- parseDate
                      et <- parseDate
-                     return (Event t "EmptyD" st et "EmptyC")
-             <|> (do t <- title
-                     st <- parseDate
-                     et <- parseDate
-                     c <- category
-                     return (Event t "EmptyD" st et c)
-             <|> (do t <- title
-                     d <- description
-                     st <- parseDate
-                     et <- parseDate
-                     return (Event t d st et "EmptyC")
+                     return (ENoCat (EventWithoutCat t st et))
 
 ------------------------------------
 -- Función de parseo

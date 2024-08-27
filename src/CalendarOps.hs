@@ -11,8 +11,9 @@ newCalendar n = Calendar n []
 -- tendría q ver que uso para el evento
 -- por ahi puedo generar distintos eventos
 -- este sería el básico
-newEvent :: DateTime -> String -> Category -> Event
-newEvent t d c = Event d t c
+newEvent :: String -> DateTime -> DateTime -> Maybe Category -> Event
+newEvent s st et Nothing = ENoCat (EventWithoutCat s st et)
+newEvent s st et (Just c) = ECat (EventWithCat s st et c)
 
 --------------------------------------------------------------------
 ---------------- Agregamos un evento al calendario -----------------

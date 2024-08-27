@@ -22,6 +22,6 @@ data EventWithoutCat = EventWithoutCat { summary :: String
 data Event = ENoCat EventWithoutCat
            | ECat EventWithCat deriving Show
 
-data Calendar = Calendar [Event]
+data Calendar = Calendar [Event] deriving Show
 
-data Error = Exists | Unexists
+data Error = Exists | Unexists deriving Show
