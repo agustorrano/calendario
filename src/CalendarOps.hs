@@ -1,7 +1,7 @@
 module CalendarOps where
 
 import Data.Dates
--- import System.IO.Unsafe (unsafePerformIO)
+import System.IO.Unsafe (unsafePerformIO)
 
 import Common
 
@@ -20,13 +20,13 @@ newEvent s st et (Just c) = ECat (EventWithCat s st et c)
 --------------------------------------------------------------------
 eventExists :: Event -> [Event] -> Bool
 eventExists _ [] = False
-eventExists e (x:xs) = if r == x then True 
+eventExists e (x:xs) = if e == x then True 
                        else eventExists e xs
 
 addEvent :: Event -> Calendar -> Either Error Calendar
 addEvent e (Calendar u es) = case eventExists e es of
                                True -> Left Exists
-                               Flase -> Right (Calendar u (e:es))
+                               False -> Right (Calendar u (e:es))
 
 
 --------------------------------------------------------------------
@@ -40,13 +40,14 @@ removeEvent e (x:xs) = if e == x then xs
 deleteEvent :: Event -> Calendar -> Either Error Calendar
 deleteEvent e (Calendar u es) = case eventExists e es of
                                   False -> Left Unexists
-                                  True -> Calendar u (removeEvent e es)
+                                  True -> Right (Calendar u (removeEvent e es))
 
 --------------------------------------------------------------------
 ------------------ Obtenemos los eventos del día -------------------
 --------------------------------------------------------------------
 isInDay :: Event -> Bool
-isInDay (Event d t c) = getCurrentDayTime == t
+isInDay (ENoCat (EventWithoutCat _ t _)) = (unsafePerformIO getCurrentDateTime) == t
+isInDay (ECat (EventWithCat _ t _ _)) = (unsafePerformIO getCurrentDateTime) == t
 
 thisDay :: Calendar -> [Event]
 thisDay cal = thisDay' cal []
@@ -61,16 +62,19 @@ thisDay' (Calendar u (e:es)) xs = if isInDay e then thisDay' (Calendar u es) (e:
 --------------------------------------------------------------------
 -- función ue obtiene el lunes de la semana actual
 getMonday :: DateTime -> DateTime
-getMonday d = let untilMonday = mod (dateWeekDay d + 6) 7
-              in addInterval d (Days (-untilMonday))
+getMonday d = let untilMonday = mod ((fromEnum (dateWeekDay d)) + 6) 7
+              in addInterval d (Days (-(fromIntegral untilMonday)))
 
 getSunday :: DateTime -> DateTime
 getSunday monday = addInterval monday (Days 6)
 
 isInWeek :: Event -> Bool
-isInWeek (Event d t c) = let monday = getMonday getCurrentDayTime
-                             sunday = getSunday monday
-                         in (t >= monday && t <= sunday)
+isInWeek (ENoCat (EventWithoutCat _ t _)) = let monday = getMonday (unsafePerformIO getCurrentDateTime)
+                                                sunday = getSunday monday
+                                            in (t >= monday && t <= sunday)
+isInWeek (ECat (EventWithCat _ t _ _)) = let monday = getMonday (unsafePerformIO getCurrentDateTime)
+                                             sunday = getSunday monday
+                                         in (t >= monday && t <= sunday)
 
 thisWeek :: Calendar -> [Event]
 thisWeek cal = thisWeek' cal []
@@ -91,9 +95,12 @@ getEndOfMonth :: DateTime -> DateTime
 getEndOfMonth startOfMonth = addInterval (addInterval startOfMonth (Months 1)) (Days (-1))
 
 isInMonth :: Event -> Bool
-isInMonth (Event d t c) = let startOfMonth = getStartOfMonth getCurrentDayTime
-                              endOfMonth = getEndOfMonth startOfMonth
-                          in (t >= startOfMonth && t <= endOfMonth)
+isInMonth (ENoCat (EventWithoutCat _ t _)) = let startOfMonth = getStartOfMonth (unsafePerformIO getCurrentDateTime)
+                                                 endOfMonth = getEndOfMonth startOfMonth
+                                             in (t >= startOfMonth && t <= endOfMonth)
+isInMonth (ECat (EventWithCat _ t _ _)) = let startOfMonth = getStartOfMonth (unsafePerformIO getCurrentDateTime)
+                                              endOfMonth = getEndOfMonth startOfMonth
+                                          in (t >= startOfMonth && t <= endOfMonth)
 
 thisMonth :: Calendar -> [Event]
 thisMonth cal = thisMonth' cal []
