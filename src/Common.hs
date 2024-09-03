@@ -21,7 +21,7 @@ data Event = ENoCat EventWithoutCat
            | ECat EventWithCat 
            deriving (Show, Eq)
 
-data Calendar = Calendar Name [Event] deriving Show
+data Calendar = Calendar Name [Event] | Null deriving Show
 
 data Error = Exists | Unexists deriving Show
 
@@ -41,12 +41,10 @@ data CalCom = NewCalendar Name
 
 data InterCom = Compile CompileForm
               | Recompile
-              | Print String
               | Quit
               | Help
               | Noop
               | Ops
-              | Save
               | Close 
               | Export String 
               | Import String 

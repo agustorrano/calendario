@@ -27,9 +27,10 @@ library
   hs-source-dirs:
       src
   build-depends:
-      base >=4.13 && <4.14
+      base >=4.7 && <5
     , mtl
     , parsec
+    , exceptions
     , haskeline
     , pretty
     , time
@@ -42,8 +43,9 @@ executable calendario
   -- other-modules:
   -- other-extensions:
   build-depends:       
-      base >=4.13 && <4.14
+      base >=4.7 && <5
     , mtl
+    , exceptions
     , parsec
     , haskeline
     , pretty

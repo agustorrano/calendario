@@ -4,6 +4,7 @@ import           Control.Exception              ( catch
                                                 , IOException
                                                 )
 import           Control.Monad.Except
+import qualified Control.Monad.Catch            as MC
 import           Data.Char
 import           Data.List
 import           Data.Maybe
@@ -33,7 +34,7 @@ main' :: InputT IO ()
 main' = do
   args <- lift getArgs
   return ()
-  -- readevalprint args (S True "" [])
+  readevalprint args (S True "" Null)
 
 iname, iprompt :: String
 iname = "calendario"
@@ -48,41 +49,41 @@ data State = S
   , lfile :: Calendar -- Calendario cargado
   }
 
---  read-eval-print loop
--- readevalprint :: [String] -> State -> InputT IO ()
--- readevalprint args state@(S inter file lfile) =
---   let rec st = do
---         mx <- MC.catch
---           (if inter then getInputLine iprompt else lift $ fmap Just getLine)
---           (lift . ioExceptionCatcher)
---         case mx of
---           Nothing -> return ()
---           Just "" -> rec st
---           Just x  -> do
---             c   <- interpretCommand x
---             st' <- handleCommand st c
---             maybe (return ()) rec st'
---   in  do
---         state' <- compileFiles (prelude : args) state
---         when inter $ lift $ putStrLn
---           (  "Intérprete de "
---           ++ iname
---           ++ ".\n"
---           ++ "Escriba :? para recibir ayuda."
---           )
---         --  enter loop
---         rec state' { inter = True }
+-- read-eval-print loop
+readevalprint :: [String] -> State -> InputT IO ()
+readevalprint args st =
+  let rec st = do
+        mx <- MC.catch
+          (if inter then getInputLine iprompt else lift $ fmap Just getLine)
+          (lift . ioExceptionCatcher)
+        case mx of
+          Nothing -> return ()
+          Just "" -> rec st
+          Just x  -> do
+            c   <- interpretCommand x
+            st' <- handleCommand st c
+            maybe (return ()) rec st'
+  in  do
+        state' <- compileFiles (prelude : args) st
+        when inter $ lift $ putStrLn
+          (  "Intérprete de "
+          ++ iname
+          ++ ".\n"
+          ++ "Escriba :? para recibir ayuda."
+          )
+        --  enter loop
+        rec st' { inter = True }
 
 -- Parseo de comandos interactivos
 commands :: [InteractiveCommand]
 commands =
   [ Cmd [":load", ":l"] "<file>" (Compile . CompileFile) "Cargar un programa desde un archivo"
   , Cmd [":reload", ":r"] "<file>" (const Recompile) "Volver a cargar el último archivo"
-  , Cmd [":print", ":p"] "<exp>" (const Print) "Imprime el calendario actual"
+  -- , Cmd [":print", ":p"] "<exp>" (const Print) "Imprime el calendario actual"
   , Cmd [":quit", ":q"] "" (const Quit) "Salir del intérprete"
   , Cmd [":help", ":?"] "" (const Help) "Mostrar esta lista de comandos"
   , Cmd [":ops", ":o"] "" (const Ops)  "Mostrar las operaciones del calendario"
-  , Cmd [":save", ":s"] "" (const Save) "Guardar el calendario actual"
+  -- , Cmd [":save", ":s"] "" (const Save) "Guardar el calendario actual"
   , Cmd [":close", ":c"] "" (const Close) "Cerrar y guardar el calendario actual"
   , Cmd [":export", ":e"] "<file>" (Export) "Exportar un calendario a un archivo .ical"
   , Cmd [":import", ":i"] "<file>" (Import) "Importar un calendario .ical"
@@ -146,15 +147,15 @@ handleInter state@(S inter file lfile) cmd = case cmd of
       CompileInteractive s -> compilePhrase state s
       CompileFile        f -> compileFile (state { file = f }) f
     return (Just state')
-  Print s ->
-    lift $ putStr (render (printCal ...)) >> return (Just state)
   Recompile -> if null lfile
     then lift $ putStrLn "No hay un archivo cargado.\n" >> return (Just state)
     else handleCommand state (Compile (CompileFile lfile))
   Ops ->
     lift $ putStr (opsTxt calCommands) >> return (Just state)
-  Save -> undefined
-  Close -> undefined
+  Close -> if null lfile
+    then lift $ putStrLn "No hay un archivo cargado.\n" >> return (Just state)
+    else do writeFile file (render $ printCal lfile)
+            return (Just (state { lfile = Null }))
   Export f -> do
     cal <- lift $ exportToICal f ve
     return (Just state)
@@ -162,19 +163,38 @@ handleInter state@(S inter file lfile) cmd = case cmd of
     cal <- lift $ importICal f
     return (Just state { file = f, lfile = updateCalendar ve cal })
 
-handleCal :: State -> Calendar -> CalCom -> InputT IO (Maybe State)
-handleCal state cal cmd = case cmd of
-  NewCalendar n -> undefined
+handleCal :: State -> CalCom -> InputT IO (Maybe State)
+handleCal state (NewCalendar n) = do 
+  let new = newCalendar n
+  return (Just (state { file = (n ++ ".ical"), lfile = new }))
+handleCal state cmd = case lfile state of
+  Null -> do putStrLn "Error: no hay un archivo cargado."
+             return state
+  Calendar n es -> handleCal' state (Calendar n es) cmd
+  
+handleCal' :: State -> Calendar -> CalCom -> InputT IO (Maybe State)
+handleCal' state cal cmd = case cmd of
   NewEvent s st et c -> undefined
   AddEvent e -> case (addEvent e) of
-    Left _ -> putStrLn "Error: event already exists."
-              return (Just state)
-    Right newEv -> return (Just (state { lfile = cal }))
-  DeleteEvent e -> undefined
-  ThisDay -> undefined
-  ThisWeek -> undefined
-  ThisMonth -> undefined
-  AllEvents -> undefined
+    Left _ -> do putStrLn "Error: evento ya existe."
+                 return (Just state)
+    Right newCal -> return (Just (state { lfile = newCal }))
+  DeleteEvent e -> case (deleteEvent e cal) of
+    Left _ -> do putStrLn "Error: evento" ++ show e ++ "no existe."
+                 return (Just state)
+    Right newCal -> return (Just (state { lfile = newCal }))
+  ThisDay -> do putStrLn ("Eventos de hoy:\n\n" ++ 
+                          printListEvent (thisDay cal))
+                return (Just state) 
+  ThisWeek -> do putStrLn ("Eventos de esta semana:\n\n" ++
+                           printListEvent (thisWeek cal))
+                 return (Just state)
+  ThisMonth -> do putStrLn ("Eventos de este mes:\n\n" ++
+                            printListEvent (thisMonth cal))
+                  return (Just state)
+  AllEvents -> do putStrLn ("Todos los eventos:\n\n" ++
+                            printListEvent (allEvents cal))
+                  return (Just state)
 
 helpTxt :: [InteractiveCommand] -> String
 helpTxt cs =
@@ -226,46 +246,46 @@ printPhrase x = do
   x' <- parseIO "<interactive>" stmt_parse x
   maybe (return ()) (printStmt . fmap (\y -> (y, conversion y))) x'
 
--- printStmt :: Stmt (LamTerm, Term) -> InputT IO ()
--- printStmt stmt = lift $ do
---   let outtext = case stmt of
---         Def x (_, e) -> "def " ++ x ++ " = " ++ render (printTerm e)
---         Eval (d, e) ->
---           "LamTerm AST:\n"
---             ++ show d
---             ++ "\n\nTerm AST:\n"
---             ++ show e
---             ++ "\n\nSe muestra como:\n"
---             ++ render (printTerm e)
---   putStrLn outtext
+printStmt :: Stmt (LamTerm, Term) -> InputT IO ()
+printStmt stmt = lift $ do
+  let outtext = case stmt of
+        Def x (_, e) -> "def " ++ x ++ " = " ++ render (printTerm e)
+        Eval (d, e) ->
+          "LamTerm AST:\n"
+            ++ show d
+            ++ "\n\nTerm AST:\n"
+            ++ show e
+            ++ "\n\nSe muestra como:\n"
+            ++ render (printTerm e)
+  putStrLn outtext
 
--- parseIO :: String -> (String -> ParseResult a) -> String -> InputT IO (Maybe a)
--- parseIO f p x = lift $ case p x of
---   Failed e -> do
---     putStrLn (f ++ ": " ++ e)
---     return Nothing
---   Ok r -> return (Just r)
+parseIO :: String -> (String -> ParseResult a) -> String -> InputT IO (Maybe a)
+parseIO f p x = lift $ case p x of
+  Failed e -> do
+    putStrLn (f ++ ": " ++ e)
+    return Nothing
+  Ok r -> return (Just r)
 
--- handleStmt :: State -> Stmt LamTerm -> InputT IO State
--- handleStmt state stmt = lift $ do
---   case stmt of
---     Def x e -> checkType x (conversion e)
---     Eval e  -> checkType it (conversion e)
---  where
---   checkType i t = do
---     case infer (ve state) t of
---       Left  err -> putStrLn ("Error de tipos: " ++ err) >> return state
---       Right ty  -> checkEval i t ty
---   checkEval i t ty = do
---     let v = eval (ve state) t
---     _ <- when (inter state) $ do
---       let outtext =
---             if i == it then render (printTerm (quote v)) else render (text i)
---       putStrLn outtext
---     return (state { ve = (Global i, (v, ty)) : ve state })
--- 
--- prelude :: String
--- prelude = "Ejemplos/Prelude.lam"
+handleStmt :: State -> Stmt LamTerm -> InputT IO State
+handleStmt state stmt = lift $ do
+  case stmt of
+    Def x e -> checkType x (conversion e)
+    Eval e  -> checkType it (conversion e)
+ where
+  checkType i t = do
+    case infer (ve state) t of
+      Left  err -> putStrLn ("Error de tipos: " ++ err) >> return state
+      Right ty  -> checkEval i t ty
+  checkEval i t ty = do
+    let v = eval (ve state) t
+    _ <- when (inter state) $ do
+      let outtext =
+            if i == it then render (printTerm (quote v)) else render (text i)
+      putStrLn outtext
+    return (state { ve = (Global i, (v, ty)) : ve state })
+ 
+prelude :: String
+prelude = "Ejemplos/Prelude.lam"
 
 it :: String
 it = "it"
