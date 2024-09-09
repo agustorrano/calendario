@@ -36,6 +36,7 @@ library
     , time
     , text
     , dates
+    , uuid
   default-language: Haskell2010
 
 executable calendario
@@ -52,6 +53,7 @@ executable calendario
     , time
     , text
     , dates
+    , uuid
 
   hs-source-dirs:      app, src
   other-modules: 
@@ -59,4 +61,5 @@ executable calendario
       ICal
       Parse
       PrettyPrinter
+      CalendarOps
   default-language:    Haskell2010

@@ -39,7 +39,7 @@ data CalCom = NewCalendar Name
             | AllEvents 
             deriving Show
 
-data InterCom = Compile CompileForm
+data InterCom = Compile String
               | Recompile
               | Quit
               | Help
@@ -47,7 +47,6 @@ data InterCom = Compile CompileForm
               | Ops
               | Close 
               | Export String 
-              | Import String 
               deriving Show
 
 data Command = CCom CalCom | ICom InterCom
