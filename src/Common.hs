@@ -6,20 +6,17 @@ import Data.Dates
 type Category = String
 type Name = String
 
-data EventWithCat = EventWithCat { summary1 :: String
-                                 , startTime1 :: DateTime
-                                 , endTime1 :: DateTime
-                                 , category :: Category
-                                 } deriving (Show, Eq)
+data Recurrence = Daily Int
+                | Weekly Int
+                | Monthly Int
+                deriving (Show, Eq)
 
-data EventWithoutCat = EventWithoutCat { summary2 :: String
-                                       , startTime2 :: DateTime
-                                       , endTime2 :: DateTime
-                                       } deriving (Show, Eq)
-
-data Event = ENoCat EventWithoutCat
-           | ECat EventWithCat 
-           deriving (Show, Eq)
+data Event = Event { summary :: String
+                   , startTime :: DateTime
+                   , endTime :: DateTime
+                   , category :: Maybe Category
+                   , recurrence :: Maybe Recurrence
+                   } deriving (Show, Eq)
 
 data Calendar = Calendar Name [Event] | Null deriving Show
 
@@ -30,13 +27,16 @@ data CompileForm = CompileInteractive  String
                  deriving Show
 
 data CalCom = NewCalendar Name
-            | NewEvent String DateTime DateTime (Maybe Category)
-            | AddEvent Event
+            | NewEvent Event
+            | ModifyEvent Event
             | DeleteEvent Event
+            | SearchEvent Event
             | ThisDay
             | ThisWeek
             | ThisMonth
             | AllEvents 
+            | Category Category
+            | FreeTime
             deriving Show
 
 data InterCom = Compile String

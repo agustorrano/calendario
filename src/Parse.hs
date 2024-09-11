@@ -1,142 +1,211 @@
 module Parse where
 
-import Text.ParserCombinators.Parsec
-import Text.Parsec.Token
-import Text.Parsec.Language ( emptyDef )
+import Text.Parsec
+import qualified Text.Parsec.Token as Tok
+import Text.ParserCombinators.Parsec.Language -- ( emptyDef )
+import qualified Text.Parsec.Expr as Ex
 import Text.Parsec.Char
 import Data.Dates
 import Data.Char
 import Common
 
+type P = Parsec String ()
+
 ------------------------------------
 
-lisComm :: TokenParser p
-lisComm = makeTokenParser 
-  (emptyDef 
+lexer :: Tok.TokenParser p
+lexer = Tok.makeTokenParser langDef
+
+langDef :: LanguageDef p
+langDef = emptyDef 
     { commentStart = "/*"
     , commentEnd = "*/"
     , commentLine = "//"
     , reservedNames = ["newCalendar", "newEvent"
-                      , "addEvent", "deleteEvent"
+                      , "modify", "delete"
+                      , "search", "category"
                       , "day", "week", "month"
-                      , "allEvents"]
+                      , "allEvents", "freeTime"
+                      , "date", "event", "every"
+                      , "days", "weeks", "months"]
     , reservedOpNames = [":", "-"]
     }
-  )
+
+whiteSpace :: P ()
+whiteSpace = Tok.whiteSpace lexer
+
+natural :: P Integer
+natural = Tok.natural lexer
+
+integer :: P Integer
+integer = Tok.integer lexer
+
+stringLiteral :: P String
+stringLiteral = Tok.stringLiteral lexer
+
+parens :: P a -> P a
+parens = Tok.parens lexer
+
+identifier :: P String
+identifier = Tok.identifier lexer
+
+reserved :: String -> P ()
+reserved = Tok.reserved lexer
+
+reservedOp :: String -> P ()
+reservedOp = Tok.reservedOp lexer
+
+------------------------------------
+-- Parsers
+------------------------------------
 
 -- Parsea los comandos
-parseCom :: Parser (CalCom)
+parseCom :: P CalCom
 parseCom = try parseNCalendar
        <|> try parseNEvent
-       <|> try parseAEvent
+       <|> try parseMEvent
        <|> try parseDEvent
+       <|> try parseSEvent
        <|> try parseDay
        <|> try parseWeek
        <|> try parseMonth
        <|> try parseAllEvents
+       <|> try parseCategory
+       <|> try parseFreeTime
 
 parseCal :: String -> Either ParseError CalCom
 parseCal s = parse parseCom "" s
 
 -- Parsea la operación para crear un nuevo calendario
-parseNCalendar :: Parser CalCom
-parseNCalendar = do reserved lisComm "newCalendar"
-                    name <- identifier lisComm
+parseNCalendar :: P CalCom
+parseNCalendar = do reserved "newCalendar"
+                    name <- identifier
                     return (NewCalendar name)
 
 -- Parsea la operación para crear un nuevo evento
-parseNEvent :: Parser CalCom
-parseNEvent = do reserved lisComm "newEvent"
-                 summary <- identifier lisComm
-                 sDate <- parseDates
-                 eDate <- parseDates
-                 category <- optionMaybe (identifier lisComm)
-                 return (NewEvent summary sDate eDate category)
+parseNEvent :: P CalCom
+parseNEvent = do reserved "newEvent"
+                 event <- parseEvent
+                 return (NewEvent event)
 
 -- Parsea la operación para agregar un evento
-parseAEvent :: Parser CalCom
-parseAEvent = do reserved lisComm "addEvent"
+parseMEvent :: P CalCom
+parseMEvent = do reserved "modify"
                  event <- parseEvent
-                 return (AddEvent event)
+                 return (ModifyEvent event)
 
 -- Parsea la operación para eliminar un evento
-parseDEvent :: Parser CalCom
-parseDEvent = do reserved lisComm "deleteEvent"
+parseDEvent :: P CalCom
+parseDEvent = do reserved "delete"
                  event <- parseEvent
                  return (DeleteEvent event)
 
+-- Parsea la operación para buscar un evento
+parseSEvent :: P CalCom
+parseSEvent = do reserved "search"
+                 event <- parseEvent
+                 return (SearchEvent event)
+
 -- Parsea la operación para ver un día completo
-parseDay :: Parser CalCom
-parseDay = do reserved lisComm "day"
+parseDay :: P CalCom
+parseDay = do reserved "day"
               return ThisDay
 
 -- Parsea la operación para ver una semana completa
-parseWeek :: Parser CalCom
-parseWeek = do reserved lisComm "week"
+parseWeek :: P CalCom
+parseWeek = do reserved "week"
                return ThisWeek
 
 -- Parsea la operación para ver un mes completo
-parseMonth :: Parser CalCom
-parseMonth = do reserved lisComm "month"
+parseMonth :: P CalCom
+parseMonth = do reserved "month"
                 return ThisMonth
 
 -- Parse la operación para ver todos los meses
-parseAllEvents :: Parser CalCom
-parseAllEvents = do reserved lisComm "allEvents"
+parseAllEvents :: P CalCom
+parseAllEvents = do reserved "allEvents"
                     return AllEvents
+
+-- Parsea la operación que busca eventos de una misma categoría
+parseCategory :: P CalCom
+parseCategory = do reserved "category"
+                   category <- identifier
+                   return (Category category)
+
+-- Parsea la operación que muestra el tiempo libre
+parseFreeTime :: P CalCom
+parseFreeTime = do reserved "freeTime"
+                   return FreeTime
 
 ------------------------------------
 ------------------------------------
 
 -- Funcion para facilitar el testing del parser
-totParser :: Parser a -> Parser a
+totParser :: P a -> P a
 totParser p = do 
-  whiteSpace lis
+  whiteSpace
   t <- p
   eof
   return t
 
--- Analizador de tokens
-lis :: TokenParser u
-lis = makeTokenParser
-  (emptyDef
-    { commentStart    = "/*"
-    , commentEnd      = "*/"
-    , commentLine     = "//"
-    , reservedNames   = ["date", "event"]
-    , reservedOpNames = [":", "-"]
-    }
-  )
-
 -- Parsea una fecha
-parseDates :: Parser DateTime
-parseDates = do day <- integer lis
-                reservedOp lis "-"
-                month <- integer lis
-                reservedOp lis "-"
-                year <- integer lis
-                h <- integer lis
-                reservedOp lis ":"
-                m <- integer lis
+parseDates :: P DateTime
+parseDates = do day <- integer
+                reservedOp "-"
+                month <- integer
+                reservedOp "-"
+                year <- integer
+                h <- integer
+                reservedOp ":"
+                m <- integer
                 return (DateTime (fromIntegral year) (fromIntegral month) (fromIntegral day) (fromIntegral h) (fromIntegral m) 0)
 
+-- Parsea la recurrencia diaria
+parseDaily :: P Recurrence
+parseDaily = do reserved "every"
+                n <- integer
+                (try (do reserved "day"
+                         return (Daily (fromIntegral n)))
+                 <|> do reserved "days"
+                        return (Daily (fromIntegral n)))
+
+-- Parsea la recurrencia semanal
+parseWeekly :: P Recurrence
+parseWeekly = do reserved "every"
+                 n <- integer
+                 (try (do reserved "week"
+                          return (Weekly (fromIntegral n)))
+                  <|> do reserved "weeks"
+                         return (Weekly (fromIntegral n)))
+
+-- Parsea la recurrencia mensual
+parseMonthly :: P Recurrence
+parseMonthly = do reserved "every"
+                  n <- integer
+                  (try (do reserved "month"
+                           return (Monthly (fromIntegral n)))
+                   <|> do reserved "months"
+                          return (Monthly (fromIntegral n)))
+
+-- Parsea la recurrencia de un evento
+parseRecurrence :: P Recurrence
+parseRecurrence = try parseDaily
+                  <|> try parseWeekly
+                  <|> parseMonthly                                 
+
 -- Parsea un evento
-parseEvent :: Parser Event
-parseEvent = try (do reserved lis "event"
-                     s <- identifier lis
-                     st <- parseDates
-                     et <- parseDates
-                     c <- identifier lis
-                     return (ECat (EventWithCat s st et c)))
-             <|> (do reserved lis "event"
-                     s <- identifier lis
-                     st <- parseDates
-                     et <- parseDates
-                     return (ENoCat (EventWithoutCat s st et)))
+parseEvent :: P Event
+parseEvent = do reserved "event"
+                s <- identifier
+                st <- parseDates
+                et <- parseDates
+                c <- optionMaybe identifier
+                r <- optionMaybe parseRecurrence
+                return (Event s st et c r)
 
 ------------------------------------
 -- Función de parseo
 ------------------------------------
 
--- parseComm :: SourceName -> String -> Either ParseError CalCom
--- parseComm = parse (totParser comm) 
+parseThis :: String -> Either ParseError CalCom
+parseThis s = parse parseCom "" s
