@@ -30,13 +30,12 @@ data CalCom = NewCalendar Name
             | NewEvent Event
             | ModifyEvent Event
             | DeleteEvent Event
-            | SearchEvent Event
+            | SearchEvent String
             | ThisDay
             | ThisWeek
             | ThisMonth
             | AllEvents 
             | Category Category
-            | FreeTime
             deriving Show
 
 data InterCom = Compile String

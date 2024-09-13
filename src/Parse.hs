@@ -25,9 +25,8 @@ langDef = emptyDef
                       , "modify", "delete"
                       , "search", "category"
                       , "day", "week", "month"
-                      , "allEvents", "freeTime"
-                      , "date", "event", "every"
-                      , "days", "weeks", "months"]
+                      , "allEvents", "date", "event"
+                      , "every", "days", "weeks", "months"]
     , reservedOpNames = [":", "-"]
     }
 
@@ -92,6 +91,7 @@ parseNEvent = do reserved "newEvent"
 parseMEvent :: P CalCom
 parseMEvent = do reserved "modify"
                  event <- parseEvent
+
                  return (ModifyEvent event)
 
 -- Parsea la operación para eliminar un evento
@@ -103,8 +103,8 @@ parseDEvent = do reserved "delete"
 -- Parsea la operación para buscar un evento
 parseSEvent :: P CalCom
 parseSEvent = do reserved "search"
-                 event <- parseEvent
-                 return (SearchEvent event)
+                 s <- identifier
+                 return (SearchEvent s)
 
 -- Parsea la operación para ver un día completo
 parseDay :: P CalCom
