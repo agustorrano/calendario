@@ -16,6 +16,7 @@ data Event = Event { summary :: String
                    , endTime :: DateTime
                    , category :: Maybe Category
                    , recurrence :: Maybe Recurrence
+                   , holeDay :: Bool
                    } deriving (Show, Eq)
 
 data Calendar = Calendar Name [Event] | Null deriving Show
