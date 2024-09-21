@@ -5,7 +5,6 @@ import qualified Text.Parsec.Token as Tok
 import Text.ParserCombinators.Parsec.Language -- ( emptyDef )
 import qualified Text.Parsec.Expr as Ex
 import Text.Parsec.Char
-import Data.Dates
 import Data.Char
 import Common
 
@@ -17,7 +16,7 @@ lexer :: Tok.TokenParser p
 lexer = Tok.makeTokenParser langDef
 
 langDef :: LanguageDef p
-langDef = emptyDef 
+langDef = emptyDef
     { commentStart = "/*"
     , commentEnd = "*/"
     , commentLine = "//"
@@ -72,38 +71,32 @@ parseCom = try parseNCalendar
         <|> try parseCategory
 
 parseCal :: String -> Either ParseError CalCom
-parseCal s = parse parseCom "" s
+parseCal = parse parseCom ""
 
 -- Parsea la operación para crear un nuevo calendario
 parseNCalendar :: P CalCom
 parseNCalendar = do reserved "newCalendar"
-                    name <- identifier
-                    return (NewCalendar name)
+                    NewCalendar <$> identifier
 
 -- Parsea la operación para crear un nuevo evento
 parseNEvent :: P CalCom
 parseNEvent = do reserved "newEvent"
-                 event <- parseEvent
-                 return (NewEvent event)
+                 NewEvent <$> parseEvent
 
 -- Parsea la operación para agregar un evento
 parseMEvent :: P CalCom
 parseMEvent = do reserved "modify"
-                 event <- parseEvent
-
-                 return (ModifyEvent event)
+                 ModifyEvent <$> parseEvent
 
 -- Parsea la operación para eliminar un evento
 parseDEvent :: P CalCom
 parseDEvent = do reserved "delete"
-                 event <- parseEvent
-                 return (DeleteEvent event)
+                 DeleteEvent <$> parseEvent
 
 -- Parsea la operación para buscar un evento
 parseSEvent :: P CalCom
 parseSEvent = do reserved "search"
-                 s <- identifier
-                 return (SearchEvent s)
+                 SearchEvent <$> identifier
 
 -- Parsea la operación para ver un día completo
 parseDay :: P CalCom
@@ -128,15 +121,14 @@ parseAllEvents = do reserved "allEvents"
 -- Parsea la operación que busca eventos de una misma categoría
 parseCategory :: P CalCom
 parseCategory = do reserved "category"
-                   category <- identifier
-                   return (Category category)
+                   Category <$> identifier
 
 ------------------------------------
 ------------------------------------
 
 -- Funcion para facilitar el testing del parser
 totParser :: P a -> P a
-totParser p = do 
+totParser p = do
   whiteSpace
   t <- p
   eof
@@ -144,7 +136,7 @@ totParser p = do
 
 -- Parsea una fecha con minutos
 parseDates :: P (DateTime, Bool)
-parseDates = 
+parseDates =
   try (do day <- integer
           reservedOp "/"
           month <- integer
@@ -153,86 +145,95 @@ parseDates =
           h <- integer
           reservedOp ":"
           m <- integer
-          return ((DateTime (fromIntegral year) 
-                            (fromIntegral month) 
-                            (fromIntegral day) 
-                            (fromIntegral h) 
-                            (fromIntegral m) 0), False))
+          return ((fromIntegral day,
+                   fromIntegral month,
+                   fromIntegral year,
+                   fromIntegral h,
+                   fromIntegral m), False))
 
 -- Parsea una fecha sin minutos
 parseDateNoMin :: P (DateTime, Bool)
-parseDateNoMin = 
+parseDateNoMin =
   try (do day <- integer
           reservedOp "/"
           month <- integer
           reservedOp "/"
           year <- integer
           h <- integer
-          return ((DateTime (fromIntegral year)
-                            (fromIntegral month)
-                            (fromIntegral day)
-                            (fromIntegral h) 0 0), False))
+          return ((fromIntegral day,
+                   fromIntegral month,
+                   fromIntegral year,
+                   fromIntegral h, 0), False))
 
 -- Parsea una fecha sin hora
 parseDateNoHour :: P (DateTime, Bool)
-parseDateNoHour = 
+parseDateNoHour =
   try (do day <- integer
           reservedOp "/"
           month <- integer
           reservedOp "/"
           year <- integer
-          return ((DateTime (fromIntegral year)
-                            (fromIntegral month)
-                            (fromIntegral day) 0 0 0), True))
+          return ((fromIntegral day,
+                   fromIntegral month,
+                   fromIntegral year, 0, 0), True))
 
 -- Parsea la recurrencia diaria
 parseDaily :: P Recurrence
 parseDaily = do reserved "every"
                 n <- integer
-                (try (do reserved "day"
-                         return (Daily (fromIntegral n)))
-                 <|> do reserved "days"
+                try (do reserved "day"
                         return (Daily (fromIntegral n)))
+                 <|> do reserved "days"
+                        return (Daily (fromIntegral n))
 
 -- Parsea la recurrencia semanal
 parseWeekly :: P Recurrence
 parseWeekly = do reserved "every"
                  n <- integer
-                 (try (do reserved "week"
-                          return (Weekly (fromIntegral n)))
-                  <|> do reserved "weeks"
+                 try (do reserved "week"
                          return (Weekly (fromIntegral n)))
+                  <|> do reserved "weeks"
+                         return (Weekly (fromIntegral n))
 
 -- Parsea la recurrencia mensual
 parseMonthly :: P Recurrence
 parseMonthly = do reserved "every"
                   n <- integer
-                  (try (do reserved "month"
-                           return (Monthly (fromIntegral n)))
-                   <|> do reserved "months"
+                  try (do reserved "month"
                           return (Monthly (fromIntegral n)))
+                   <|> do reserved "months"
+                          return (Monthly (fromIntegral n))
 
 -- Parsea la recurrencia de un evento
 parseRecurrence :: P Recurrence
 parseRecurrence = try parseDaily
                   <|> try parseWeekly
-                  <|> parseMonthly                                 
+                  <|> parseMonthly
+
+first :: DateTime -> Int
+first (d, _, _, _, _) = d
+
+second :: DateTime -> Int
+second (_, m, _, _, _) = m
+
+third :: DateTime -> Int
+third (_, _, y, _, _) = y
 
 -- Parsea un evento
 parseEvent :: P Event
-parseEvent = 
+parseEvent =
   do reserved "event"
      s <- identifier
      (st, b) <- parseDates <|> parseDateNoMin <|> parseDateNoHour
-     if b 
-     then (do reservedOp "-"
-              (et, b') <- parseDateNoHour
-              c <- optionMaybe identifier
-              r <- optionMaybe parseRecurrence
-              return (Event s st et c r b)
+     if b
+     then do reservedOp "-"
+             (et, b') <- parseDateNoHour
+             c <- optionMaybe identifier
+             r <- optionMaybe parseRecurrence
+             return (Event s st et c r b)
            <|> do c <- optionMaybe identifier
                   r <- optionMaybe parseRecurrence
-                  return (Event s st st c r b))
+                  return (Event s st st c r b)
      else try (do reservedOp "-"
                   (et, b') <- parseDates <|> parseDateNoMin
                   c <- optionMaybe identifier
@@ -242,21 +243,19 @@ parseEvent =
                            h <- integer
                            reservedOp ":"
                            m <- integer
-                           let d = day st
-                               mon = month st
-                               y = year st
-                               et = DateTime d mon y
-                                             (fromIntegral h)
-                                             (fromIntegral m) 0
+                           let d = first st
+                               mon = second st
+                               y = third st
+                               et = (d, mon, y, fromIntegral h, fromIntegral m)
                            c <- optionMaybe identifier
                            r <- optionMaybe parseRecurrence
                            return (Event s st et c r b))
                <|> do reservedOp "-"
                       h <- integer
-                      let d = day st
-                          mon = month st
-                          y = year st
-                          et = DateTime d mon y (fromIntegral h) 0 0
+                      let d = first st
+                          mon = second st
+                          y = third st
+                          et = (d, mon, y, fromIntegral h, 0)
                       c <- optionMaybe identifier
                       r <- optionMaybe parseRecurrence
                       return (Event s st et c r b))
@@ -266,4 +265,4 @@ parseEvent =
 ------------------------------------
 
 parseThis :: String -> Either ParseError CalCom
-parseThis s = parse parseCom "" s
+parseThis = parse parseCom ""

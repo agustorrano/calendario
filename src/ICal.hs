@@ -11,35 +11,28 @@ import Parse
 
 -- Función que genera un UUID aleatorio
 getUID :: IO String
-getUID = do 
-  uid <- nextRandom
-  return $ toString uid
+getUID = do
+  toString <$> nextRandom
 
 eventToICal :: Event -> IO String
-eventToICal (ENoCat (EventWithoutCat s st et)) = do
+eventToICal (Event s st et c r b) = do
   uid <- getUID
-  -- let sTime = showDateTime st
-  -- let eTime = showDateTime et
-  return $
-    "BEGIN:VEVENT\n" ++
-    "UID:" ++ uid ++ "\n" ++
-    "DTSTART:" ++ (show st) ++ "\n" ++
-    "DTEND:" ++ (show et) ++ "\n" ++
-    "SUMMARY:" ++ s ++ "\n" ++
-    "END:VEVENT\n"
-eventToICal (ECat (EventWithCat s st et c)) = do
-  uid <- getUID
-  -- let sTime = showDateTime st
-  -- let eTime = showDateTime et
-  return $
-    "BEGIN:VEVENT\n" ++
-    "UID:" ++ uid ++ "\n" ++
-    "DTSTART:" ++ (show st) ++ "\n" ++
-    "DTEND:" ++ (show et) ++ "\n" ++
-    "SUMMARY:" ++ s ++ "\n" ++
-    "CATEGORY:" ++ c ++ "\n" ++
-    "END:VEVENT\n"
-
+  case c of
+    Nothing -> return $
+      "BEGIN:VEVENT\n" ++
+      "UID:" ++ uid ++ "\n" ++
+      "DTSTART:" ++ show st ++ "\n" ++
+      "DTEND:" ++ show et ++ "\n" ++
+      "SUMMARY:" ++ s ++ "\n" ++
+      "END:VEVENT\n"
+    Just cat -> return $
+      "BEGIN:VEVENT\n" ++
+      "UID:" ++ uid ++ "\n" ++
+      "DTSTART:" ++ show st ++ "\n" ++
+      "DTEND:" ++ show et ++ "\n" ++
+      "SUMMARY:" ++ s ++ "\n" ++
+      "CATEGORY:" ++ cat ++ "\n" ++
+      "END:VEVENT\n"
 
 exportToICal :: FilePath -> Calendar -> IO ()
 exportToICal file (Calendar n events) = do
@@ -49,4 +42,3 @@ exportToICal file (Calendar n events) = do
       body = concat eventStrings
       icalFile = hdr ++ body ++ body
   writeFile file icalFile
-      

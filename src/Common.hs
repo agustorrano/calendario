@@ -1,10 +1,10 @@
 -- Tipos de datos utilizados
 module Common where
 
-import Data.Dates
-
 type Category = String
 type Name = String
+
+type DateTime = (Int, Int, Int, Int, Int)
 
 data Recurrence = Daily Int
                 | Weekly Int
