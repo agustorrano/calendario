@@ -10,12 +10,13 @@ import Prettyprinter
     defaultLayoutOptions,
     layoutSmart,
     nest,
+    line,
+    comma,
     sep,
     parens,
+    brackets,
     Doc,
     Pretty(pretty) )
--- import Text.PrettyPrint.HughesPJ
--- import Prelude hiding ( (<>) )
 
 -- Color para el encabezado
 constColor :: Doc AnsiStyle -> Doc AnsiStyle
@@ -46,6 +47,9 @@ sepDoc s = sepColor (pretty s)
 keywordDoc :: String -> Doc AnsiStyle
 keywordDoc s = keywordColor (pretty s)
 
+nameDoc :: String -> Doc AnsiStyle
+nameDoc s = nameColor (pretty s)
+
 -- Imprime una fecha
 first :: DateTime -> Int
 first (d, _, _, _, _) = d
@@ -75,15 +79,15 @@ printDate date =
 -- Imprime un evento
 printEvent :: Event -> Doc AnsiStyle
 printEvent (Event s st et Nothing r b) = 
-  keywordDoc "Event" <+> text s <+> printDate st <+> printDate et
+  keywordDoc "Event" <+> nameDoc s <+> printDate st <+> printDate et
 printEvent (Event s st et (Just c) r b) =
-  text "Event" <+> text s <+> printDate st <+> printDate et <+> text c
+  keywordDoc "Event" <+> nameDoc s <+> printDate st <+> printDate et <+> nameDoc c
 
 -- Imprime una lista
 printList :: [a] -> (a -> Doc AnsiStyle) -> Doc AnsiStyle
-printList [] _ = empty
-printList [x] p = p x <> text "\n"
-printList (x:xs) p = p x <> comma <> text "\n" 
+printList [] _ = mempty
+printList [x] p = p x <> line
+printList (x:xs) p = p x <> comma <> line
                      <> printList xs p
 
 -- Imprime una lista de eventos
@@ -92,5 +96,11 @@ printListEvent es = brackets (printList es printEvent)
 
 -- Imprime un calndario
 printCal :: Calendar -> Doc AnsiStyle
-printCal (Calendar u es) = text "Cal" <+> text u <> text "\n"
+printCal (Calendar u es) = keywordDoc "Cal" <+> nameDoc u <> line
                            <> printListEvent es
+
+render :: Doc AnsiStyle -> String
+render = unpack . renderStrict . layoutSmart defaultLayoutOptions
+
+ppListEv :: [Event] -> String
+ppListEv = render . printListEvent

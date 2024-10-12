@@ -44,6 +44,12 @@ stringLiteral = Tok.stringLiteral lexer
 parens :: P a -> P a
 parens = Tok.parens lexer
 
+brackets :: P a -> P a
+brackets = Tok.brackets lexer
+
+comma :: P String
+comma = Tok.comma lexer
+
 identifier :: P String
 identifier = Tok.identifier lexer
 
@@ -69,9 +75,6 @@ parseCom = try parseNCalendar
         <|> try parseMonth
         <|> try parseAllEvents
         <|> try parseCategory
-
-parseCal :: String -> Either ParseError CalCom
-parseCal = parse parseCom ""
 
 -- Parsea la operación para crear un nuevo calendario
 parseNCalendar :: P CalCom
@@ -259,6 +262,15 @@ parseEvent =
                       c <- optionMaybe identifier
                       r <- optionMaybe parseRecurrence
                       return (Event s st et c r b))
+
+parseList :: P [Event]
+parseList = brackets (sepBy parseEvent comma)
+
+parseCal :: P Calendar
+parseCal = do reserved "Cal"
+              reservedOp ":"
+              name <- identifier
+              Calendar name <$> parseList
 
 ------------------------------------
 -- Función de parseo
