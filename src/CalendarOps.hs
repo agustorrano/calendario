@@ -91,20 +91,24 @@ searchEvent s (x:xs) =
     else searchEvent s xs
 
 --------------------------------------------------------------------
+------------ Obtenemos los eventos según un predicado --------------
+--------------------------------------------------------------------
+
+getEvents :: Calendar -> [Event] -> (Event -> Bool) -> [Event]
+getEvents (Calendar _ []) xs _ = xs
+getEvents (Calendar u (e:es)) xs f = if f e then getEvents (Calendar u es) (e:xs) f
+                                     else getEvents (Calendar u es) xs f
+
+--------------------------------------------------------------------
 ------------------ Obtenemos los eventos del día -------------------
 --------------------------------------------------------------------
 isInDay :: Event -> Bool
-isInDay (Event _ (d, m, y, _, _) _ _ _ _) = 
-    let (day, mon, year) = toGregorian (utctDay (unsafePerformIO getCurrentTime)) 
-    in fromInteger day == d && mon == m && year == y
+isInDay (Event _ (DateTime (d, m, y, _, _)) _ _ _ _) = 
+    let (year, mon, day) = toGregorian (utctDay (unsafePerformIO getCurrentTime)) 
+    in fromInteger year == y && mon == m && day == d
 
 thisDay :: Calendar -> [Event]
-thisDay cal = thisDay' cal []
-
-thisDay' :: Calendar -> [Event] -> [Event]
-thisDay' (Calendar u []) xs = xs
-thisDay' (Calendar u (e:es)) xs = if isInDay e then thisDay' (Calendar u es) (e:xs)
-                                  else thisDay' (Calendar u es) xs
+thisDay cal = getEvents cal [] isInDay
 
 --------------------------------------------------------------------
 ---------------- Obtenemos los eventos de la semana ----------------
@@ -112,54 +116,45 @@ thisDay' (Calendar u (e:es)) xs = if isInDay e then thisDay' (Calendar u es) (e:
 -- función ue obtiene el lunes y domingo de la semana actual
 getMondayandSunday :: Day -> (DateTime, DateTime)
 getMondayandSunday date = 
-    let (year, week) = mondayStartWeek date
-        monday = fromMondayStartWeek (toInteger year) week 1
+    let (y, m, d) = toGregorian date
+        (week, i) = mondayStartWeek date
+        monday = fromMondayStartWeek (toInteger y) week 1
         sunday = addDays 6 monday
         (ym, mm, dm) = toGregorian monday
         (ys, ms, ds) = toGregorian sunday
-    in ((dm, mm, fromInteger ym, 0, 0), (ds, ms, fromInteger ys, 0, 0))
+    in (DateTime (dm, mm, fromInteger ym, 0, 0), DateTime (ds, ms, fromInteger ys, 0, 0))
 
 isInWeek :: Event -> Bool
 isInWeek (Event _ t _ _ _ _) = 
     let (monday, sunday) = getMondayandSunday (utctDay (unsafePerformIO getCurrentTime))
-    in (t >= monday && t <= sunday)
+    in t >= monday && t <= sunday
 
 thisWeek :: Calendar -> [Event]
-thisWeek cal = thisWeek' cal []
-
-thisWeek' :: Calendar -> [Event] -> [Event]
-thisWeek' (Calendar u []) xs = xs
-thisWeek' (Calendar u (e:es)) xs = if isInWeek e then thisWeek' (Calendar u es) (e:xs)
-                                   else thisWeek' (Calendar u es) xs
+thisWeek cal = getEvents cal [] isInWeek
 
 --------------------------------------------------------------------
 ------------------ Obtenemos los eventos del mes -------------------
 --------------------------------------------------------------------
 -- función para obtener el primer día del mes
 getStartOfMonth :: DateTime -> DateTime
-getStartOfMonth (_, m, y, _, _) = (1, m, y, 0, 0)
+getStartOfMonth (DateTime (_, m, y, _, _)) = DateTime (1, m, y, 0, 0)
 
 getEndOfMonth :: DateTime -> DateTime
-getEndOfMonth (_, m, y, _, _) =
+getEndOfMonth (DateTime (_, m, y, _, _)) =
     let firstNextMonth = fromGregorian (toInteger y) (m + 1) 1
         last = addDays (-1) firstNextMonth
         (year, mon, d) = toGregorian last
-    in (d, mon, fromInteger year, 0, 0)
+    in DateTime (d, mon, fromInteger year, 0, 0)
 
 isInMonth :: Event -> Bool
 isInMonth (Event _ t _ _ _ _) = 
     let (y, m, d) = toGregorian (utctDay (unsafePerformIO getCurrentTime))
-        startOfMonth = getStartOfMonth (d, m, fromInteger y, 0, 0)
+        startOfMonth = getStartOfMonth (DateTime (d, m, fromInteger y, 0, 0))
         endOfMonth = getEndOfMonth startOfMonth
     in (t >= startOfMonth && t <= endOfMonth)
 
 thisMonth :: Calendar -> [Event]
-thisMonth cal = thisMonth' cal []
-
-thisMonth' :: Calendar -> [Event] -> [Event]
-thisMonth' (Calendar u []) xs = xs
-thisMonth' (Calendar u (e:es)) xs = if isInMonth e then thisMonth' (Calendar u es) (e:xs)
-                                    else thisMonth' (Calendar u es) xs
+thisMonth cal = getEvents cal [] isInMonth
 
 --------------------------------------------------------------------
 ----------- Obtenemos todos los eventos de un calendario -----------

@@ -148,7 +148,7 @@ parseDates =
           h <- integer
           reservedOp ":"
           m <- integer
-          return ((fromIntegral day,
+          return (DateTime (fromIntegral day,
                    fromIntegral month,
                    fromIntegral year,
                    fromIntegral h,
@@ -163,7 +163,7 @@ parseDateNoMin =
           reservedOp "/"
           year <- integer
           h <- integer
-          return ((fromIntegral day,
+          return (DateTime (fromIntegral day,
                    fromIntegral month,
                    fromIntegral year,
                    fromIntegral h, 0), False))
@@ -176,7 +176,7 @@ parseDateNoHour =
           month <- integer
           reservedOp "/"
           year <- integer
-          return ((fromIntegral day,
+          return (DateTime (fromIntegral day,
                    fromIntegral month,
                    fromIntegral year, 0, 0), True))
 
@@ -214,13 +214,13 @@ parseRecurrence = try parseDaily
                   <|> parseMonthly
 
 first :: DateTime -> Int
-first (d, _, _, _, _) = d
+first (DateTime (d, _, _, _, _)) = d
 
 second :: DateTime -> Int
-second (_, m, _, _, _) = m
+second (DateTime (_, m, _, _, _)) = m
 
 third :: DateTime -> Int
-third (_, _, y, _, _) = y
+third (DateTime (_, _, y, _, _)) = y
 
 -- Parsea un evento
 parseEvent :: P Event
@@ -249,7 +249,7 @@ parseEvent =
                            let d = first st
                                mon = second st
                                y = third st
-                               et = (d, mon, y, fromIntegral h, fromIntegral m)
+                               et = DateTime (d, mon, y, fromIntegral h, fromIntegral m)
                            c <- optionMaybe identifier
                            r <- optionMaybe parseRecurrence
                            return (Event s st et c r b))
@@ -258,7 +258,7 @@ parseEvent =
                       let d = first st
                           mon = second st
                           y = third st
-                          et = (d, mon, y, fromIntegral h, 0)
+                          et = DateTime (d, mon, y, fromIntegral h, 0)
                       c <- optionMaybe identifier
                       r <- optionMaybe parseRecurrence
                       return (Event s st et c r b))

@@ -4,7 +4,8 @@ module Common where
 type Category = String
 type Name = String
 
-type DateTime = (Int, Int, Int, Int, Int)
+newtype DateTime = DateTime (Int, Int, Int, Int, Int)
+                   deriving (Show, Eq, Ord)
 
 data Recurrence = Daily Int
                 | Weekly Int
@@ -35,7 +36,7 @@ data CalCom = NewCalendar Name
             | ThisDay
             | ThisWeek
             | ThisMonth
-            | AllEvents 
+            | AllEvents
             | Category Category
             deriving Show
 
@@ -45,8 +46,8 @@ data InterCom = Compile String
               | Help
               | Noop
               | Ops
-              | Close 
-              | Export String 
+              | Close
+              | Export String
               deriving Show
 
 data Command = CCom CalCom | ICom InterCom

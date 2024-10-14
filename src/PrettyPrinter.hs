@@ -52,19 +52,19 @@ nameDoc s = nameColor (pretty s)
 
 -- Imprime una fecha
 first :: DateTime -> Int
-first (d, _, _, _, _) = d
+first (DateTime (d, _, _, _, _)) = d
 
 second :: DateTime -> Int
-second (_, m, _, _, _) = m
+second (DateTime (_, m, _, _, _)) = m
 
 third :: DateTime -> Int
-third (_, _, y, _, _) = y
+third (DateTime (_, _, y, _, _)) = y
 
 fourth :: DateTime -> Int
-fourth (_, _, _, h, _) = h
+fourth (DateTime (_, _, _, h, _)) = h
 
 fifth :: DateTime -> Int
-fifth (_, _, _, _, m) = m
+fifth (DateTime (_, _, _, _, m)) = m
 
 printDate :: DateTime -> Doc AnsiStyle
 printDate date = 
@@ -92,7 +92,7 @@ printList (x:xs) p = p x <> comma <> line
 
 -- Imprime una lista de eventos
 printListEvent :: [Event] -> Doc AnsiStyle
-printListEvent es = brackets (printList es printEvent)
+printListEvent es = printList es printEvent
 
 -- Imprime un calndario
 printCal :: Calendar -> Doc AnsiStyle
