@@ -5,7 +5,11 @@ type Category = String
 type Name = String
 
 newtype DateTime = DateTime (Int, Int, Int, Int, Int)
-                   deriving (Show, Eq, Ord)
+                   deriving (Show, Eq)
+
+instance Ord DateTime where
+  DateTime (d1,m1,y1,_,_) <= DateTime (d2,m2,y2,_,_) = d1 <= d2 && m1 <= m2 && y1 <= y2
+  DateTime (d1,m1,y1,_,_) >= DateTime (d2,m2,y2,_,_) = d1 >= d2 && m1 >= m2 && y1 >= y2
 
 data Recurrence = Daily Int
                 | Weekly Int

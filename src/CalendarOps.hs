@@ -171,3 +171,7 @@ sameCategory (x:xs) cat = case category x of
     Nothing -> sameCategory xs cat
     Just c -> if cat == c then x:sameCategory xs cat
               else sameCategory xs cat
+
+--------------------------------------------------------------------
+---------------- AGREGAR OPERACIONES DE RECURRENCIA ----------------
+--------------------------------------------------------------------
