@@ -87,8 +87,8 @@ printEvent (Event s st et (Just c) r b) =
 printList :: [a] -> (a -> Doc AnsiStyle) -> Doc AnsiStyle
 printList [] _ = mempty
 printList [x] p = p x <> line
-printList (x:xs) p = p x <> comma <> line
-                     <> printList xs p
+printList (x:xs) p = 
+  p x <> comma <> line <> printList xs p
 
 -- Imprime una lista de eventos
 printListEvent :: [Event] -> Doc AnsiStyle
@@ -96,8 +96,8 @@ printListEvent es = printList es printEvent
 
 -- Imprime un calndario
 printCal :: Calendar -> Doc AnsiStyle
-printCal (Calendar u es) = keywordDoc "Cal" <+> nameDoc u <> line
-                           <> printListEvent es
+printCal (Calendar u es) = 
+  keywordDoc "Cal" <+> nameDoc u <> line <> printListEvent es
 
 render :: Doc AnsiStyle -> String
 render = unpack . renderStrict . layoutSmart defaultLayoutOptions

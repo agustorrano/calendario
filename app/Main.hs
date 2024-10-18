@@ -17,11 +17,12 @@ import           Data.Text (pack)
 import           Data.Time (Day, fromGregorian)
 import           Text.ParserCombinators.Parsec (parse)
 
-import           Common
-import           PrettyPrinter
-import           Parse
-import           CalendarOps
-import           ICal
+import Common
+import PrettyPrinter
+import Parse
+import RecurrenceOps
+import CalendarOps
+import ICal
 ---------------------
 --- Interpreter
 ---------------------

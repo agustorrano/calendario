@@ -24,6 +24,7 @@ library
       ICal
       Parse
       PrettyPrinter
+      RecurrenceOps
   hs-source-dirs:
       src
   build-depends:
@@ -63,4 +64,5 @@ executable calendario
       Parse
       PrettyPrinter
       CalendarOps
+      RecurrenceOps
   default-language:    Haskell2010
