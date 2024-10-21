@@ -9,15 +9,13 @@ import Data.Time.Calendar.OrdinalDate
 import Common
 import RecurrenceOps
 
---------------------------------------------------------------------
-------------------- Creamos un nuevo calendario --------------------
---------------------------------------------------------------------
+-- | Creamos un nuevo calendario 
+-- |
 newCalendar :: Name -> Calendar
 newCalendar n = Calendar n []
 
---------------------------------------------------------------------
---------------------- Creamos un nuevo evento ----------------------
---------------------------------------------------------------------
+-- | Creamos un nuevo evento
+-- |
 eventExists :: Event -> [Event] -> Bool
 eventExists _ [] = False
 eventExists e (x:xs) = (e == x) || eventExists e xs
@@ -29,9 +27,8 @@ newEvent e (Calendar u es) =
     let nevs = expandEvent e
     in Right (Calendar u (nevs ++ es))
 
---------------------------------------------------------------------
---------------- Eliminamos un evento del calendario ----------------
---------------------------------------------------------------------
+-- | Eliminamos un evento del calendario
+-- |
 removeEvent :: Event -> [Event] -> [Event]
 removeEvent _ [] = []
 removeEvent e (x:xs) = 
@@ -43,9 +40,8 @@ deleteEvent e (Calendar u es) =
   if eventExists e es then Right (Calendar u (removeEvent e es)) 
   else Left Unexists
 
---------------------------------------------------------------------
---------------- Modificamos un evento del calendario ---------------
---------------------------------------------------------------------
+-- | Modificamos un evento del calendario
+-- |
 modifyTitle :: Event -> [Event] -> String -> [Event]
 modifyTitle _ [] _ = []
 modifyTitle e@(Event _ st et c r b) (x:xs) t =
@@ -86,27 +82,24 @@ modifyRec e@(Event t st et c _ b) (x:xs) r =
     in (ev:xs)
   else x:modifyRec e xs r
 
---------------------------------------------------------------------
---------------- Buscamos un evento en el calendario ----------------
---------------------------------------------------------------------
+-- | Buscamos un evento en el calendario
+-- |
 searchEvent :: String -> [Event] -> [Event]
 searchEvent _ [] = []
 searchEvent s (x:xs) =
   if s == summary x then x:searchEvent s xs
   else searchEvent s xs
 
---------------------------------------------------------------------
------------- Obtenemos los eventos según un predicado --------------
---------------------------------------------------------------------
+-- | Obtenemos los eventos según un predicado
+-- |
 getEvents :: Calendar -> [Event] -> (Event -> Bool) -> [Event]
 getEvents (Calendar _ []) xs _ = xs
 getEvents (Calendar u (e:es)) xs f = 
   if f e then getEvents (Calendar u es) (e:xs) f
   else getEvents (Calendar u es) xs f
 
---------------------------------------------------------------------
------------------- Obtenemos los eventos del día -------------------
---------------------------------------------------------------------
+-- | Obtenemos los eventos del día
+-- |
 isInDay :: Event -> Bool
 isInDay (Event _ (DateTime (d, m, y, _, _)) _ _ _ _) = 
   let (year, mon, day) = toGregorian (utctDay (unsafePerformIO getCurrentTime)) 
@@ -115,9 +108,8 @@ isInDay (Event _ (DateTime (d, m, y, _, _)) _ _ _ _) =
 thisDay :: Calendar -> [Event]
 thisDay cal = getEvents cal [] isInDay
 
---------------------------------------------------------------------
----------------- Obtenemos los eventos de la semana ----------------
---------------------------------------------------------------------
+-- | Obtenemos los eventos de la semana 
+-- |
 -- | Función que obtiene el lunes y domingo de la semana actual
 getMondayandSunday :: Day -> (DateTime, DateTime)
 getMondayandSunday date = 
@@ -137,9 +129,8 @@ isInWeek (Event _ t _ _ _ _) =
 thisWeek :: Calendar -> [Event]
 thisWeek cal = getEvents cal [] isInWeek
 
---------------------------------------------------------------------
------------------- Obtenemos los eventos del mes -------------------
---------------------------------------------------------------------
+-- | Obtenemos los eventos del mes
+-- |
 -- | Función para obtener el primer día del mes
 getStartOfMonth :: DateTime -> DateTime
 getStartOfMonth (DateTime (_, m, y, _, _)) = DateTime (1, m, y, 0, 0)
@@ -161,15 +152,13 @@ isInMonth (Event _ t _ _ _ _) =
 thisMonth :: Calendar -> [Event]
 thisMonth cal = getEvents cal [] isInMonth
 
---------------------------------------------------------------------
------------ Obtenemos todos los eventos de un calendario -----------
---------------------------------------------------------------------
+-- | Obtenemos todos los eventos de un calendario
+-- |
 allEvents :: Calendar -> [Event]
 allEvents (Calendar u es) = es
 
---------------------------------------------------------------------
--------- Obtenemos todos los eventos de la misma categoría ---------
---------------------------------------------------------------------
+-- | Obtenemos todos los eventos de la misma categoría
+-- |
 sameCategory :: [Event] -> Category -> [Event]
 sameCategory [] _ = []
 sameCategory (x:xs) cat = case category x of

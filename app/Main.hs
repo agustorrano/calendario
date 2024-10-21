@@ -1,28 +1,30 @@
 module Main where
 
-import           Control.Exception              ( catch
-                                                , IOException
-                                                )
-import           Control.Monad.Except
-import qualified Control.Monad.Catch            as MC
-import           Data.Char
-import           Data.List
-import           Data.Maybe
--- import           Prelude                 hiding ( print )
+import Control.Exception              
+  ( catch
+  , IOException )
+import Control.Monad.Except
+import qualified Control.Monad.Catch as MC
+import Data.Char
+import Data.List as L
+import Data.Maybe
 import System.Console.Haskeline
-    ( defaultSettings, getInputLine, runInputT, InputT )
-import           System.Environment
-import           System.IO               hiding ( print )
-import           Data.Text (pack)
-import           Data.Time (Day, fromGregorian)
-import           Text.ParserCombinators.Parsec (parse)
+  ( defaultSettings
+  , getInputLine
+  , runInputT
+  , InputT )
+import System.Environment
+import System.IO hiding (print)
+import Data.Text as T
+import Data.Time (Day, fromGregorian)
+import Text.ParserCombinators.Parsec (parse, string)
 
 import Common
 import PrettyPrinter
 import Parse
 import RecurrenceOps
 import CalendarOps
-import ICal
+
 ---------------------
 --- Interpreter
 ---------------------
@@ -52,41 +54,42 @@ data State = S
 -- read-eval-print loop
 readevalprint :: [String] -> State -> InputT IO ()
 readevalprint args st =
-  let rec st = do
-        mx <- MC.catch
-          (if inter st then getInputLine iprompt else lift $ fmap Just getLine)
-          (lift . ioExceptionCatcher)
-        case mx of
-          Nothing -> return ()
-          Just "" -> rec st
-          Just x  -> do
-            c   <- interpretCommand x
-            st' <- handleCommand st c
-            maybe (return ()) rec st'
-  in  do
-        state' <- compileFiles (prelude : args) st
-        when (inter st) $ lift $ putStrLn
-          (  "Intérprete de "
-          ++ iname
-          ++ ".\n"
-          ++ "Escriba :? para recibir ayuda."
-          )
-        --  enter loop
-        rec state' { inter = True }
+  let 
+    rec st = do
+      mx <- MC.catch
+        (if inter st then getInputLine iprompt else lift $ fmap Just getLine)
+        (lift . ioExceptionCatcher)
+      case mx of
+        Nothing -> return ()
+        Just "" -> rec st
+        Just x  -> do
+          c   <- interpretCommand x
+          st' <- handleCommand st c
+          maybe (return ()) rec st'
+  in  
+    do
+      state' <- compileFiles args st
+      when (inter st) $ lift $ putStrLn
+        (  "Intérprete de "
+        ++ iname
+        ++ ".\n"
+        ++ "Escriba :? para recibir ayuda."
+        )
+      --  enter loop
+      rec state' { inter = True }
 
 -- Parseo de comandos interactivos
 commands :: [InteractiveCommand]
 commands =
   [ Cmd [":load", ":l"] "<file>" Compile "Cargar un programa desde un archivo"
-  , Cmd [":reload", ":r"] "<file>" (const Recompile) "Volver a cargar el último archivo"
-  -- , Cmd [":print", ":p"] "<exp>" (const Print) "Imprime el calendario actual"
+  , Cmd [":reload", ":r"] "<file>" (const Reload) "Volver a cargar el último archivo"
+  , Cmd [":print", ":p"] "" (const Print) "Imprime el calendario actual"
   , Cmd [":quit", ":q"] "" (const Quit) "Salir del intérprete"
   , Cmd [":help", ":?"] "" (const Help) "Mostrar esta lista de comandos"
   , Cmd [":ops", ":o"] "" (const Ops)  "Mostrar las operaciones del calendario"
-  -- , Cmd [":save", ":s"] "" (const Save) "Guardar el calendario actual"
   , Cmd [":close", ":c"] "" (const Close) "Cerrar y guardar el calendario actual"
-  -- , Cmd [":export", ":e"] "<file>" Export "Exportar un calendario a un archivo .ical"
-  -- , Cmd [":import", ":i"] "<file>" (Import) "Importar un calendario .ical"
+  , Cmd [":export", ":e"] "<file>" Export "Exportar un calendario a un archivo .ical"
+  , Cmd [":import", ":i"] "<file>" Import "Importar un calendario .ical"
   ]
 
 -- Parseo de comandos de calendario
@@ -105,12 +108,12 @@ calCommands =
   ]
 
 interpretCommand :: String -> InputT IO Command
-interpretCommand x = lift $ if ":" `isPrefixOf` x
+interpretCommand x = lift $ if ":" `L.isPrefixOf` x
   then do
-    let (cmd, t') = break isSpace x  -- ejemplo: "cmd arg1 arg2" -> ("cmd", " arg1 arg2")
-        t         = dropWhile isSpace t'  -- ejemplo: " arg1 arg2" -> "arg1 arg2"
+    let (cmd, t') = L.break isSpace x
+        t         = L.dropWhile isSpace t'
     -- find matching commands
-        matching = filter (\(Cmd cs _ _ _) -> any (isPrefixOf cmd) cs) commands
+        matching = L.filter (\(Cmd cs _ _ _) -> L.any (L.isPrefixOf cmd) cs) commands
     case matching of
       [] -> do
         putStrLn
@@ -122,7 +125,7 @@ interpretCommand x = lift $ if ":" `isPrefixOf` x
       _ -> do
         putStrLn
           (  "Comando ambigüo, podría ser "
-          ++ intercalate ", " ([ head cs | Cmd cs _ _ _ <- matching ])
+          ++ L.intercalate ", " ([ L.head cs | Cmd cs _ _ _ <- matching ])
           ++ "."
           )
         return (ICom Noop)
@@ -143,10 +146,13 @@ handleInter state@(S inter file lfile) cmd = case cmd of
   Quit   -> lift $ unless inter (putStrLn "Quit") >> return Nothing
   Noop   -> return (Just state)
   Help   -> lift $ putStr (helpTxt commands) >> return (Just state)
+  Print  -> case lfile of
+    Null -> lift $ putStrLn "No hay un archivo cargado.\n" >> return (Just state)
+    c@(Calendar _ _) -> lift $ putStrLn (render (printCal c)) >> return (Just state)
   Compile f -> do
     state' <- compileFile (state { file = f }) f
     return (Just state')
-  Recompile -> case lfile of
+  Reload -> case lfile of
     Null -> lift $ putStrLn "No hay un archivo cargado.\n" >> return (Just state)
     (Calendar _ _) -> handleCommand state (ICom (Compile file))
   Ops ->
@@ -156,12 +162,12 @@ handleInter state@(S inter file lfile) cmd = case cmd of
     (Calendar _ _) -> do 
       lift $ writeFile file (render $ printCal lfile)
       return (Just (state { lfile = Null }))
-  -- Export f -> do
-  --   cal <- lift $ exportToICal f lfile
-  --   return (Just state)
-  -- Import f -> do
-  --   cal <- lift $ importICal f
-  --   return (Just state { file = f, lfile = updateCalendar state cal })
+  Export f -> do
+    cal <- lift $ exportToICal f lfile
+    return (Just state)
+  Import f -> do
+    cal <- lift $ importICal f
+    return (Just state { file = f, lfile = cal })
 
 handleCal :: State -> CalCom -> InputT IO (Maybe State)
 handleCal state (NewCalendar n) = do 
@@ -214,12 +220,12 @@ helpTxt :: [InteractiveCommand] -> String
 helpTxt cs =
   "Lista de comandos:  Cualquier comando puede ser abreviado a :c donde\n"
     ++ "c es el primer caracter del nombre completo.\n\n"
-    ++ unlines 
-      (map
+    ++ L.unlines 
+      (L.map
         (\(Cmd c a _ d) -> 
-          let ct = intercalate ", "
-                   (map (++ if null a then "" else " " ++ a) c)
-          in ct ++ replicate ((24 - length ct) `max` 2) ' ' ++ d
+          let ct = L.intercalate ", "
+                   (L.map (++ if L.null a then "" else " " ++ a) c)
+          in ct ++ L.replicate ((24 - L.length ct) `max` 2) ' ' ++ d
         )
         cs
       )                
@@ -227,12 +233,12 @@ helpTxt cs =
 opsTxt :: [CalendarCommand] -> String
 opsTxt cs =
   "Lista de operaciones del calndario:\n\n"
-  ++ unlines
-      (map 
+  ++ L.unlines
+      (L.map 
         (\(CCmd a c d) -> 
-          let ct = intercalate ", "
-                   (map (++ if null a then "" else " " ++ a) c)
-          in ct ++ replicate ((24 - length ct) `max` 2) ' ' ++ d
+          let ct = L.intercalate ", "
+                   (L.map (++ if L.null a then "" else " " ++ a) c)
+          in ct ++ L.replicate ((24 - L.length ct) `max` 2) ' ' ++ d
         )
         cs
       )
@@ -243,16 +249,16 @@ compileFiles xs s =
 
 compileFile :: State -> String -> InputT IO State
 compileFile state@(S inter file lfile) f =
-  if f == ".ical" then return state
+  if f == ".cal" then return state
   else do
     lift $ putStrLn ("Abriendo " ++ f ++ "...")
-    let f' = reverse (dropWhile isSpace (reverse f))
+    let f' = L.reverse (L.dropWhile isSpace (L.reverse f))
     x <- lift $ Control.Exception.catch
       (readFile f')
       (\e -> do
         let err = show (e :: IOException)
         hPutStr stderr
-                ("No se pudo abrir el archivo " ++ f' ++ ": " ++ err ++ "\n")
+          ("No se pudo abrir el archivo " ++ f' ++ ": " ++ err ++ "\n")
         return ""
       )
     cal <- case parse (totParser parseCal) f x of
@@ -260,56 +266,112 @@ compileFile state@(S inter file lfile) f =
       Right c -> return (Just c)
     maybe (return state) (\s -> return (state { file = f, lfile = s })) cal
 
--- compilePhrase :: State -> String -> InputT IO State
--- compilePhrase state x = do
---   x' <- parseIO "<interactive>" stmt_parse x
---   maybe (return state) (handleStmt state) x'
+-- | Convierte un DateTime en un string con el formato para un archivo .ical
+-- |
+dt2str :: DateTime -> String
+dt2str (DateTime (d, m, y, h, min)) =
+  let aux n = if n < 10 then '0':show n else show n
+  in aux y ++ aux m ++ aux d ++ "T" ++ aux h ++ aux min ++ "00Z"
 
--- printPhrase :: String -> InputT IO ()
--- printPhrase x = do
---   x' <- parseIO "<interactive>" stmt_parse x
---   maybe (return ()) (printStmt . fmap (\y -> (y, conversion y))) x'
+-- | Convierte un evento en un formato .ical
+-- |
+{-
+event2ICal :: Event -> String
+event2ICal (Event s st et c r b) =
+  case c of
+    Nothing -> L.unlines 
+      [ "BEGIN:VEVENT"
+      , "DTSTART:" ++ dt2str st
+      , "DTEND:" ++ dt2str et
+      , "UID:" ++ s
+      , "STATUS:CONFIMED"
+      , "SUMMARY:" ++ s
+      , "END:VEVENT"
+      ]
+    Just cat -> L.unlines
+      [ "BEGIN:VEVENT"
+      , "UID:" ++ s
+      , "SUMMARY:" ++ s
+      , "DTSTART:" ++ dt2str st
+      , "DTEND:" ++ dt2str et
+      , "CATEGORY:" ++ cat
+      , "STATUS:CONFIMED"
+      , "END:VEVENT"
+      ]
+-}
+event2ICal :: Event -> String
+event2ICal (Event s st et c r b) = 
+  let str = L.unlines ["BEGIN:VEVENT"
+        , "DTSTART:" ++ dt2str st
+        , "DTEND:" ++ dt2str et
+        , "UID:" ++ s ++ dt2str st
+        , "STATUS:CONFIMED"
+        , "SUMMARY:" ++ s
+        ]
+  in str ++ "END:VEVENT"
 
--- printStmt :: Stmt (LamTerm, Term) -> InputT IO ()
--- printStmt stmt = lift $ do
---   let outtext = case stmt of
---         Def x (_, e) -> "def " ++ x ++ " = " ++ render (printTerm e)
---         Eval (d, e) ->
---           "LamTerm AST:\n"
---             ++ show d
---             ++ "\n\nTerm AST:\n"
---             ++ show e
---             ++ "\n\nSe muestra como:\n"
---             ++ render (printTerm e)
---   putStrLn outtext
+-- | Exporta un calendario a un archivo .ical
+-- |
+exportToICal :: FilePath -> Calendar -> IO ()
+exportToICal file (Calendar _ es) = do
+  let content = L.unlines ["BEGIN:VCALENDAR"
+        , "PRODID:-//Google Inc//Google Calendar 70.9054//EN"
+        , "VERSION:2.0","CALSCALE:GREGORIAN"
+        , "METHOD:PUBLISH"
+        , "X-WR-TIMEZONE:America/Argentina/Cordoba"
+        , L.intercalate "\n" (L.map event2ICal es)
+        , "END:VCALENDAR"]
+  writeFile file content
+  putStrLn $ "Calendario exportado a: " ++ file
 
--- parseIO :: String -> (String -> ParseResult a) -> String -> InputT IO (Maybe a)
--- parseIO f p x = lift $ case p x of
---   Failed e -> do
---     putStrLn (f ++ ": " ++ e)
---     return Nothing
---   Ok r -> return (Just r)
+-- | Convierte un string en un DateTime
+-- |
+str2dt :: String -> DateTime
+str2dt str = 
+  let (y, r1) = L.splitAt 4 str
+      (m, r2) = L.splitAt 2 r1
+      (d, r3) = L.splitAt 2 r2
+      (h, r4) = L.splitAt 2 (L.drop 1 r3)
+      (min, _) = L.splitAt 2 r4
+  in DateTime (read d, read m, read y, read h, read min)
 
--- handleStmt :: State -> Stmt LamTerm -> InputT IO State
--- handleStmt state stmt = lift $ do
---   case stmt of
---     Def x e -> checkType x (conversion e)
---     Eval e  -> checkType it (conversion e)
---  where
---   checkType i t = do
---     case infer (ve state) t of
---       Left  err -> putStrLn ("Error de tipos: " ++ err) >> return state
---       Right ty  -> checkEval i t ty
---   checkEval i t ty = do
---     let v = eval (ve state) t
---     _ <- when (inter state) $ do
---       let outtext =
---             if i == it then render (printTerm (quote v)) else render (text i)
---       putStrLn outtext
---     return (state { ve = (Global i, (v, ty)) : ve state })
- 
-prelude :: String
-prelude = "Ejemplos/Prelude.lam"
+-- | Convierte un string en una tupla clave valor
+-- |
+str2tuple :: String -> Maybe (String, String)
+str2tuple str =
+  case L.break (== ':') str of
+    (k, ':' : val) -> Just (k, val)
+    _ -> Nothing
 
--- it :: String
--- it = "it"
+-- | Busca una calve en una lista de tuplas
+-- |
+lookupKey :: String -> [(String, String)] -> Maybe String
+lookupKey k = fmap snd . L.find ((== k) . fst)
+
+-- | Parsea una evento en formato .ical
+-- |
+parseICal :: [String] -> Maybe Event
+parseICal str = do
+  let ps = mapMaybe str2tuple str
+  s <- lookupKey "SUMMARY:" ps
+  dst <- lookupKey "DTSTART:" ps
+  det <- lookupKey "DTEND:" ps
+  let st = str2dt dst
+      et = str2dt det
+  return $ Event s st et Nothing Nothing False
+
+-- | Divide el calendario en bloques de eventos
+-- |
+splitEv :: [String] -> [[String]]
+splitEv es =
+  let txt = L.map T.pack es
+      block = T.splitOn (T.pack "END:VEVENT") (T.unlines txt)
+  in L.map (L.map unpack . T.lines) block
+
+-- | Importa un .ical
+-- |
+importICal :: FilePath -> IO Calendar
+importICal file = do
+  cont <- L.lines <$> readFile file
+  let es = mapMaybe parseICal (splitEv cont)
+  return $ Calendar "X" es

@@ -1,4 +1,4 @@
--- Tipos de datos utilizados
+-- | Tipos de datos utilizados
 module Common where
 
 type Category = String
@@ -51,13 +51,15 @@ data CalCom =
 
 data InterCom = 
     Compile String
-  | Recompile
+  | Reload
+  | Print
   | Quit
   | Help
   | Noop
   | Ops
   | Close
   | Export String
+  | Import String
   deriving Show
 
 data Command = CCom CalCom | ICom InterCom
