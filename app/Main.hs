@@ -88,7 +88,7 @@ commands =
   , Cmd [":help", ":?"] "" (const Help) "Mostrar esta lista de comandos"
   , Cmd [":ops", ":o"] "" (const Ops)  "Mostrar las operaciones del calendario"
   , Cmd [":close", ":c"] "" (const Close) "Cerrar y guardar el calendario actual"
-  , Cmd [":export", ":e"] "<file>" Export "Exportar un calendario a un archivo .ical"
+  , Cmd [":export", ":e"] "" (const Export) "Exportar un calendario a un archivo .ical"
   , Cmd [":import", ":i"] "<file>" Import "Importar un calendario .ical"
   ]
 
@@ -162,11 +162,11 @@ handleInter state@(S inter file lfile) cmd = case cmd of
     (Calendar _ _) -> do 
       lift $ writeFile file (render $ printCal lfile)
       return (Just (state { lfile = Null }))
-  Export f -> do
-    cal <- lift $ exportToICal f lfile
+  Export -> do
+    cal <- lift $ exportToICal lfile
     return (Just state)
   Import f -> do
-    cal <- lift $ importICal f
+    cal <- lift $ importICal f lfile
     return (Just state { file = f, lfile = cal })
 
 handleCal :: State -> CalCom -> InputT IO (Maybe State)
@@ -266,39 +266,21 @@ compileFile state@(S inter file lfile) f =
       Right c -> return (Just c)
     maybe (return state) (\s -> return (state { file = f, lfile = s })) cal
 
+-- | Suma 3 horas
+-- | Es necesario para pasarlo a Google Calendar
+-- |
+suma3 :: Int -> Int
+suma3 h = (h + 3) `mod` 24
+
 -- | Convierte un DateTime en un string con el formato para un archivo .ical
 -- |
 dt2str :: DateTime -> String
 dt2str (DateTime (d, m, y, h, min)) =
   let aux n = if n < 10 then '0':show n else show n
-  in aux y ++ aux m ++ aux d ++ "T" ++ aux h ++ aux min ++ "00Z"
+  in aux y ++ aux m ++ aux d ++ "T" ++ aux (suma3 h) ++ aux min ++ "00Z"
 
 -- | Convierte un evento en un formato .ical
 -- |
-{-
-event2ICal :: Event -> String
-event2ICal (Event s st et c r b) =
-  case c of
-    Nothing -> L.unlines 
-      [ "BEGIN:VEVENT"
-      , "DTSTART:" ++ dt2str st
-      , "DTEND:" ++ dt2str et
-      , "UID:" ++ s
-      , "STATUS:CONFIMED"
-      , "SUMMARY:" ++ s
-      , "END:VEVENT"
-      ]
-    Just cat -> L.unlines
-      [ "BEGIN:VEVENT"
-      , "UID:" ++ s
-      , "SUMMARY:" ++ s
-      , "DTSTART:" ++ dt2str st
-      , "DTEND:" ++ dt2str et
-      , "CATEGORY:" ++ cat
-      , "STATUS:CONFIMED"
-      , "END:VEVENT"
-      ]
--}
 event2ICal :: Event -> String
 event2ICal (Event s st et c r b) = 
   let str = L.unlines ["BEGIN:VEVENT"
@@ -312,8 +294,8 @@ event2ICal (Event s st et c r b) =
 
 -- | Exporta un calendario a un archivo .ical
 -- |
-exportToICal :: FilePath -> Calendar -> IO ()
-exportToICal file (Calendar _ es) = do
+exportToICal :: Calendar -> IO ()
+exportToICal (Calendar n es) = do
   let content = L.unlines ["BEGIN:VCALENDAR"
         , "PRODID:-//Google Inc//Google Calendar 70.9054//EN"
         , "VERSION:2.0","CALSCALE:GREGORIAN"
@@ -321,8 +303,14 @@ exportToICal file (Calendar _ es) = do
         , "X-WR-TIMEZONE:America/Argentina/Cordoba"
         , L.intercalate "\n" (L.map event2ICal es)
         , "END:VCALENDAR"]
+      file = n
   writeFile file content
   putStrLn $ "Calendario exportado a: " ++ file
+
+-- | Resta 3 horas
+-- |
+resta3 :: Int -> Int
+resta3 h = (h - 3) `mod` 24
 
 -- | Convierte un string en un DateTime
 -- |
@@ -333,7 +321,7 @@ str2dt str =
       (d, r3) = L.splitAt 2 r2
       (h, r4) = L.splitAt 2 (L.drop 1 r3)
       (min, _) = L.splitAt 2 r4
-  in DateTime (read d, read m, read y, read h, read min)
+  in DateTime (read d, read m, read y, resta3 (read h), read min)
 
 -- | Convierte un string en una tupla clave valor
 -- |
@@ -353,9 +341,9 @@ lookupKey k = fmap snd . L.find ((== k) . fst)
 parseICal :: [String] -> Maybe Event
 parseICal str = do
   let ps = mapMaybe str2tuple str
-  s <- lookupKey "SUMMARY:" ps
-  dst <- lookupKey "DTSTART:" ps
-  det <- lookupKey "DTEND:" ps
+  dst <- lookupKey "DTSTART" ps
+  det <- lookupKey "DTEND" ps
+  s <- lookupKey "SUMMARY" ps
   let st = str2dt dst
       et = str2dt det
   return $ Event s st et Nothing Nothing False
@@ -370,8 +358,8 @@ splitEv es =
 
 -- | Importa un .ical
 -- |
-importICal :: FilePath -> IO Calendar
-importICal file = do
-  cont <- L.lines <$> readFile file
+importICal :: FilePath -> Calendar -> IO Calendar
+importICal file (Calendar n e) = do
+  cont <- fmap L.lines (readFile file)
   let es = mapMaybe parseICal (splitEv cont)
-  return $ Calendar "X" es
+  return $ Calendar n (es ++ e)

@@ -5,6 +5,7 @@ import Data.Time
 import Data.Time.Calendar.OrdinalDate 
   ( mondayStartWeek
   , fromMondayStartWeek)
+import Data.Maybe
 
 import Common
 import RecurrenceOps
@@ -20,12 +21,14 @@ eventExists :: Event -> [Event] -> Bool
 eventExists _ [] = False
 eventExists e (x:xs) = (e == x) || eventExists e xs
 
+catExists :: Category -> [Category] -> Bool
+catExists _ [] = False
+catExists e (x:xs) = (e == x) || catExists e xs
+
 newEvent :: Event -> Calendar -> Either Error Calendar
 newEvent e (Calendar u es) = 
   if eventExists e es then Left Exists 
-  else 
-    let nevs = expandEvent e
-    in Right (Calendar u (nevs ++ es))
+  else Right (Calendar u (expandEvent e ++ es))
 
 -- | Eliminamos un evento del calendario
 -- |
@@ -155,13 +158,13 @@ thisMonth cal = getEvents cal [] isInMonth
 -- | Obtenemos todos los eventos de un calendario
 -- |
 allEvents :: Calendar -> [Event]
-allEvents (Calendar u es) = es
+allEvents (Calendar _ es) = es
 
 -- | Obtenemos todos los eventos de la misma categoría
 -- |
 sameCategory :: [Event] -> Category -> [Event]
 sameCategory [] _ = []
-sameCategory (x:xs) cat = case category x of
-  Nothing -> sameCategory xs cat
-  Just c -> if cat == c then x:sameCategory xs cat
-            else sameCategory xs cat
+sameCategory (x:xs) c = 
+  let cat = category x
+  in if cat == Just c then x:sameCategory xs c
+     else sameCategory xs c

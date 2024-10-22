@@ -58,7 +58,7 @@ data InterCom =
   | Noop
   | Ops
   | Close
-  | Export String
+  | Export
   | Import String
   deriving Show
 

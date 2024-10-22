@@ -18,23 +18,28 @@ import Prettyprinter
     Doc,
     Pretty(pretty) )
 
--- Color para el encabezado
+-- | Color para el encabezado
+-- |
 constColor :: Doc AnsiStyle -> Doc AnsiStyle
 constColor = annotate (bold <> colorDull Cyan)
 
--- Color para el separador
+-- | Color para el separador
+-- |
 sepColor :: Doc AnsiStyle -> Doc AnsiStyle
 sepColor = annotate (bold <> color Magenta)
 
--- Color para el título del evento
+-- | Color para el título del evento
+-- |
 keywordColor :: Doc AnsiStyle -> Doc AnsiStyle
 keywordColor = annotate (italicized <> color Green)
 
--- Color para la fecha y horario
+-- | Color para la fecha y horario
+-- |
 timeColor :: Doc AnsiStyle -> Doc AnsiStyle
 timeColor = annotate (color Blue)
 
--- Color para el resto
+-- | Color para el resto
+-- |
 nameColor :: Doc AnsiStyle -> Doc AnsiStyle
 nameColor = id
 
@@ -50,7 +55,8 @@ keywordDoc s = keywordColor (pretty s)
 nameDoc :: String -> Doc AnsiStyle
 nameDoc s = nameColor (pretty s)
 
--- Imprime una fecha
+-- | Imprime una fecha
+-- |
 first :: DateTime -> Int
 first (DateTime (d, _, _, _, _)) = d
 
@@ -76,25 +82,29 @@ printDate date =
   in intDoc d <> sepDoc "/" <> intDoc m <> sepDoc "/"
      <> intDoc y <+> intDoc h <> sepDoc ":" <> intDoc mi
 
--- Imprime un evento
+-- | Imprime un evento
+-- |
 printEvent :: Event -> Doc AnsiStyle
 printEvent (Event s st et Nothing r b) = 
   keywordDoc "Event" <+> nameDoc s <+> printDate st <+> printDate et
 printEvent (Event s st et (Just c) r b) =
   keywordDoc "Event" <+> nameDoc s <+> printDate st <+> printDate et <+> nameDoc c
 
--- Imprime una lista
+-- | Imprime una lista
+-- |
 printList :: [a] -> (a -> Doc AnsiStyle) -> Doc AnsiStyle
 printList [] _ = mempty
 printList [x] p = p x <> line
 printList (x:xs) p = 
   p x <> comma <> line <> printList xs p
 
--- Imprime una lista de eventos
+-- | Imprime una lista de eventos
+-- |
 printListEvent :: [Event] -> Doc AnsiStyle
 printListEvent es = printList es printEvent
 
--- Imprime un calndario
+-- | Imprime un calndario
+-- |
 printCal :: Calendar -> Doc AnsiStyle
 printCal (Calendar u es) = 
   keywordDoc "Cal" <+> nameDoc u <> line <> printListEvent es
