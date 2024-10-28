@@ -9,8 +9,8 @@ newtype DateTime =
   deriving (Show, Eq)
 
 instance Ord DateTime where
-  DateTime (d1,m1,y1,_,_) <= DateTime (d2,m2,y2,_,_) = d1 <= d2 && m1 <= m2 && y1 <= y2
-  DateTime (d1,m1,y1,_,_) >= DateTime (d2,m2,y2,_,_) = d1 >= d2 && m1 >= m2 && y1 >= y2
+  compare (DateTime (d1,m1,y1,_,_)) (DateTime (d2,m2,y2,_,_)) =
+    compare (y1,m1,d1) (y2,m2,d2)
 
 data Recurrence = 
     Daily Int

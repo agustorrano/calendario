@@ -13,10 +13,12 @@ import System.Console.Haskeline
   , getInputLine
   , runInputT
   , InputT )
+import System.Console.Readline (readline)
 import System.Environment
 import System.IO hiding (print)
 import Data.Text as T
 import Data.Time (Day, fromGregorian)
+import Data.Time.Calendar (gregorianMonthLength)
 import Text.ParserCombinators.Parsec (parse, string)
 
 import Common
@@ -82,7 +84,7 @@ readevalprint args st =
 commands :: [InteractiveCommand]
 commands =
   [ Cmd [":load", ":l"] "<file>" Compile "Cargar un programa desde un archivo"
-  , Cmd [":reload", ":r"] "<file>" (const Reload) "Volver a cargar el último archivo"
+  , Cmd [":reload", ":r"] "" (const Reload) "Volver a cargar el último archivo"
   , Cmd [":print", ":p"] "" (const Print) "Imprime el calendario actual"
   , Cmd [":quit", ":q"] "" (const Quit) "Salir del intérprete"
   , Cmd [":help", ":?"] "" (const Help) "Mostrar esta lista de comandos"
@@ -97,9 +99,9 @@ calCommands :: [CalendarCommand]
 calCommands = 
   [ CCmd "newCalendar" ["<owner>"] "Crear un nuevo calendario"
   , CCmd "newEvent" ["<event>"] "Crear un nuevo evento"
-  , CCmd "modifyEvent" ["<event>"] "Modificar un evento"
-  , CCmd "deleteEvent" ["<event>"] "Eliminar un evento"
-  , CCmd "searchEvent" ["<string>"] "Buscar un evento"
+  , CCmd "modify" ["<event>"] "Modificar un evento"
+  , CCmd "delete" ["<event>"] "Eliminar un evento"
+  , CCmd "search" ["<string>"] "Buscar un evento"
   , CCmd "day" ["<day>"] "Mostrar los eventos de un dia"
   , CCmd "week" ["<week>"] "Mostrar los eventos de una semana"
   , CCmd "month" ["<month>"] "Mostrar los eventos de un mes"
@@ -143,10 +145,10 @@ handleCommand state cmd = case cmd of
 
 handleInter :: State -> InterCom -> InputT IO (Maybe State)
 handleInter state@(S inter file lfile) cmd = case cmd of
-  Quit   -> lift $ unless inter (putStrLn "Quit") >> return Nothing
-  Noop   -> return (Just state)
-  Help   -> lift $ putStr (helpTxt commands) >> return (Just state)
-  Print  -> case lfile of
+  Quit -> lift $ unless inter (putStrLn "Quit") >> return Nothing
+  Noop -> return (Just state)
+  Help -> lift $ putStr (helpTxt commands) >> return (Just state)
+  Print -> case lfile of
     Null -> lift $ putStrLn "No hay un archivo cargado.\n" >> return (Just state)
     c@(Calendar _ _) -> lift $ putStrLn (render (printCal c)) >> return (Just state)
   Compile f -> do
@@ -155,19 +157,22 @@ handleInter state@(S inter file lfile) cmd = case cmd of
   Reload -> case lfile of
     Null -> lift $ putStrLn "No hay un archivo cargado.\n" >> return (Just state)
     (Calendar _ _) -> handleCommand state (ICom (Compile file))
-  Ops ->
-    lift $ putStr (opsTxt calCommands) >> return (Just state)
+  Ops -> lift $ putStr (opsTxt calCommands) >> return (Just state)
   Close -> case lfile of
     Null -> lift $ putStrLn "No hay un archivo cargado.\n" >> return (Just state)
     (Calendar _ _) -> do 
       lift $ writeFile file (render $ printCal lfile)
       return (Just (state { lfile = Null }))
-  Export -> do
-    cal <- lift $ exportToICal lfile
-    return (Just state)
-  Import f -> do
-    cal <- lift $ importICal f lfile
-    return (Just state { file = f, lfile = cal })
+  Export -> case lfile of
+    Null -> lift $ putStrLn "No hay un archivo cargado.\n" >> return (Just state)
+    (Calendar _ _) -> do
+      cal <- lift $ exportToICal lfile
+      return (Just state)
+  Import f -> case lfile of
+    Null -> lift $ putStrLn "No hay un archivo cargado.\n" >> return (Just state)
+    (Calendar _ _) -> do
+      cal <- lift $ importICal f lfile
+      return (Just state { file = f, lfile = cal })
 
 handleCal :: State -> CalCom -> InputT IO (Maybe State)
 handleCal state (NewCalendar n) = do 
@@ -184,7 +189,38 @@ handleCal' state cal cmd = case cmd of
     Left _ -> do lift $ putStrLn "Error: evento ya existe."
                  return (Just state)
     Right newCal -> return (Just (state { lfile = newCal }))
-  ModifyEvent e -> undefined
+  ModifyEvent e -> do 
+    x <- lift $ readline 
+      ("Escriba la opción según la parte del evento " ++ show (summary e) ++ 
+       " que quiera modificar:\n1. Título del evento.\n2. Horario/Día de incio.\n3. Horario/Día de finalización.\n4. Categoría.\n")
+    case x of
+      (Just "1") -> do
+        y <- lift $ readline "Escriba el nuevo título.\n"
+        let Calendar n ev = lfile state
+            ev' = modifyTitle e ev (fromJust y)
+        return (Just (state { lfile = Calendar n ev' }))
+      (Just "2") -> do
+        y <- lift $ readline "Escriba el nuevo horario/día de inicio (d/m/a h:min).\n"
+        case parse parseDate "" (fromJust y) of
+          Left e -> lift $ print e >> return Nothing
+          Right (st, _) -> do
+            let Calendar n ev = lfile state
+                ev' = modifyST e ev st
+            return (Just (state { lfile = Calendar n ev' }))
+      (Just "3") -> do
+        y <- lift $ readline "Escriba el nuevo horario/día de finalización (d/m/a h:min).\n"
+        case parse parseDate "" (fromJust y) of
+          Left e -> lift $ print e >> return Nothing
+          Right (et, _) -> do
+            let Calendar n ev = lfile state
+                ev' = modifyET e ev et
+            return (Just (state { lfile = Calendar n ev' }))
+      (Just "4") -> do
+        y <- lift $ readline "Escriba la nueva categoría.\n"
+        let Calendar n ev = lfile state
+            ev' = modifyCategory e ev (fromJust y)
+        return (Just (state { lfile = Calendar n ev' }))
+      (Just _) -> do lift $ putStrLn "Error: se espera un número del 1 al 5." >> return (Just state) 
   DeleteEvent e -> case deleteEvent e cal of
     Left _ -> do lift $ putStrLn ("Error: evento" ++ show e ++ "no existe.")
                  return (Just state)
@@ -269,23 +305,38 @@ compileFile state@(S inter file lfile) f =
 -- | Suma 3 horas
 -- | Es necesario para pasarlo a Google Calendar
 -- |
-suma3 :: Int -> Int
-suma3 h = (h + 3) `mod` 24
+suma3 :: DateTime -> DateTime
+suma3 (DateTime (d, m, y, h, min)) = 
+  let sum = h + 3
+      (sDay, h') = divMod sum 24
+      daysInMonth = gregorianMonthLength (toInteger y) m
+      nd = d + sDay
+      (d', m', y') = adjustDate nd m y daysInMonth
+  in DateTime (d', m', y', h', min)
+
+-- | Ajusta el día, mes y año según sea necesario
+-- |
+adjustDate :: Int -> Int -> Int -> Int -> (Int, Int, Int)
+adjustDate d m y daysInMonth
+  | d > daysInMonth = (1, nextM, nextY)
+  | otherwise = (d, m, y)
+  where nextM = if m == 12 then 1 else m + 1
+        nextY = if m == 12 then y + 1 else y
 
 -- | Convierte un DateTime en un string con el formato para un archivo .ical
 -- |
 dt2str :: DateTime -> String
 dt2str (DateTime (d, m, y, h, min)) =
   let aux n = if n < 10 then '0':show n else show n
-  in aux y ++ aux m ++ aux d ++ "T" ++ aux (suma3 h) ++ aux min ++ "00Z"
+  in aux y ++ aux m ++ aux d ++ "T" ++ aux h ++ aux min ++ "00Z"
 
 -- | Convierte un evento en un formato .ical
 -- |
 event2ICal :: Event -> String
 event2ICal (Event s st et c r b) = 
   let str = L.unlines ["BEGIN:VEVENT"
-        , "DTSTART:" ++ dt2str st
-        , "DTEND:" ++ dt2str et
+        , "DTSTART:" ++ dt2str (suma3 st)
+        , "DTEND:" ++ dt2str (suma3 et)
         , "UID:" ++ s ++ dt2str st
         , "STATUS:CONFIMED"
         , "SUMMARY:" ++ s
@@ -309,8 +360,21 @@ exportToICal (Calendar n es) = do
 
 -- | Resta 3 horas
 -- |
-resta3 :: Int -> Int
-resta3 h = (h - 3) `mod` 24
+resta3 :: DateTime -> DateTime
+resta3 (DateTime (d, m, y, h, min)) = 
+  let res = h - 3
+      (rDay, h') = if res < 0 then (-1, res + 24) else (0, res)
+      (d', m', y') = adjustDateRes (d + rDay) m y
+  in DateTime (d', m', y', h', min)
+
+-- | Ajusta el día, mes y año según sea necesario
+-- |
+adjustDateRes :: Int -> Int -> Int -> (Int, Int, Int)
+adjustDateRes d m y
+  | d < 1 = (gregorianMonthLength (toInteger prevY) prevM, prevM, prevY)
+  | otherwise = (d, m, y)
+  where prevM = if m == 1 then 12 else m - 1
+        prevY = if m == 1 then y - 1 else y
 
 -- | Convierte un string en un DateTime
 -- |
@@ -321,7 +385,7 @@ str2dt str =
       (d, r3) = L.splitAt 2 r2
       (h, r4) = L.splitAt 2 (L.drop 1 r3)
       (min, _) = L.splitAt 2 r4
-  in DateTime (read d, read m, read y, resta3 (read h), read min)
+  in DateTime (read d, read m, read y, read h, read min)
 
 -- | Convierte un string en una tupla clave valor
 -- |
@@ -346,7 +410,7 @@ parseICal str = do
   s <- lookupKey "SUMMARY" ps
   let st = str2dt dst
       et = str2dt det
-  return $ Event s st et Nothing Nothing False
+  return $ Event s (resta3 st) (resta3 et) Nothing Nothing False
 
 -- | Divide el calendario en bloques de eventos
 -- |
@@ -360,6 +424,6 @@ splitEv es =
 -- |
 importICal :: FilePath -> Calendar -> IO Calendar
 importICal file (Calendar n e) = do
-  cont <- fmap L.lines (readFile file)
+  cont <- fmap (L.map (L.filter (/= '\r')) . L.lines) (readFile file)
   let es = mapMaybe parseICal (splitEv cont)
   return $ Calendar n (es ++ e)

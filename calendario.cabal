@@ -32,6 +32,7 @@ library
     , parsec
     , exceptions
     , haskeline
+    , readline
     , pretty
     , prettyprinter
     , prettyprinter-ansi-terminal
@@ -48,6 +49,7 @@ executable calendario
     , parsec
     , exceptions
     , haskeline
+    , readline
     , pretty
     , prettyprinter
     , prettyprinter-ansi-terminal

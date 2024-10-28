@@ -69,19 +69,19 @@ modifyET e@(Event t st _ c r b) (x:xs) et =
     in (ev:xs)
   else x:modifyET e xs et
 
-modifyCategory :: Event -> [Event] -> Maybe Category -> [Event]
+modifyCategory :: Event -> [Event] -> Category -> [Event]
 modifyCategory _ [] _ = []
 modifyCategory e@(Event t st et _ r b) (x:xs) c =
   if e == x then
-    let ev = Event t st et c r b
+    let ev = Event t st et (Just c) r b
     in (ev:xs)
   else x:modifyCategory e xs c
 
-modifyRec :: Event -> [Event] -> Maybe Recurrence -> [Event]
+modifyRec :: Event -> [Event] -> Recurrence -> [Event]
 modifyRec _ [] _ = []
 modifyRec e@(Event t st et c _ b) (x:xs) r =
   if e == x then
-    let ev = Event t st et c r b
+    let ev = Event t st et c (Just r) b
     in (ev:xs)
   else x:modifyRec e xs r
 

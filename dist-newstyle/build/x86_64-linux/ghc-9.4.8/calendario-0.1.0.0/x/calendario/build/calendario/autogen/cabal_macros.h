@@ -90,6 +90,16 @@
   (major1) == 1 && (major2) <  1 || \
   (major1) == 1 && (major2) == 1 && (minor) <= 3)
 #endif /* MIN_VERSION_prettyprinter_ansi_terminal */
+/* package readline-1.0.3.0 */
+#ifndef VERSION_readline
+#define VERSION_readline "1.0.3.0"
+#endif /* VERSION_readline */
+#ifndef MIN_VERSION_readline
+#define MIN_VERSION_readline(major1,major2,minor) (\
+  (major1) <  1 || \
+  (major1) == 1 && (major2) <  0 || \
+  (major1) == 1 && (major2) == 0 && (minor) <= 3)
+#endif /* MIN_VERSION_readline */
 /* package text-2.0.2 */
 #ifndef VERSION_text
 #define VERSION_text "2.0.2"

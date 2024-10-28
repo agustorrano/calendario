@@ -94,13 +94,13 @@ parseNEvent = do
 parseMEvent :: P CalCom
 parseMEvent = do 
   reserved "modify"
-  ModifyEvent <$> parseEvent
+  ModifyEvent <$> parseEventE
 
 -- | Parsea la operación para eliminar un evento
 parseDEvent :: P CalCom
 parseDEvent = do 
   reserved "delete"
-  DeleteEvent <$> parseEvent
+  DeleteEvent <$> parseEventE
 
 -- | Parsea la operación para buscar un evento
 parseSEvent :: P CalCom
@@ -295,11 +295,31 @@ parseEvTrue =
     (c, r) <- parseCatRec
     return (Nothing, c, r)
 
+parseDate :: P (DateTime, Bool)
+parseDate = parseDates <|> parseDateNoMin <|> parseDateNoHour
+
 -- | Parsea un evento
 parseEvent :: P Event
 parseEvent = do
   s <- identifier
-  (st, b) <- parseDates <|> parseDateNoMin <|> parseDateNoHour
+  (st, b) <- parseDate
+  if b
+  then do 
+    (jet, c, r) <- parseEvTrue
+    case jet of
+      Nothing -> return (Event s st st c r b)
+      Just et -> return (Event s st et c r b)
+  else do
+    et <- try parseET1 <|> try (parseET2 st) <|> parseET3 st
+    (c, r) <- parseCatRec
+    return (Event s st et c r b)
+  
+
+parseEventE :: P Event
+parseEventE = do
+  reserved "E"
+  s <- identifier
+  (st, b) <- parseDate
   if b
   then do 
     (jet, c, r) <- parseEvTrue
