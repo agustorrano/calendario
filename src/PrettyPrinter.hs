@@ -88,9 +88,9 @@ printDate date =
 -- |
 printEvent :: Event -> Doc AnsiStyle
 printEvent (Event s st et Nothing r b) = 
-  keywordDoc "E" <+> nameDoc s <+> printDate st <+> sepDoc "-" <+> printDate et
+  keywordDoc "E" <+> nameDoc s <+> printDate st <+> sepDoc ">" <+> printDate et
 printEvent (Event s st et (Just c) r b) =
-  keywordDoc "E" <+> nameDoc s <+> printDate st <+> sepDoc "-" <+> printDate et <+> nameDoc c
+  keywordDoc "E" <+> nameDoc s <+> printDate st <+> sepDoc ">" <+> printDate et <+> nameDoc c
 
 -- | Imprime una lista
 -- |

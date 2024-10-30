@@ -6,7 +6,11 @@ type Name = String
 
 newtype DateTime = 
   DateTime (Int, Int, Int, Int, Int)
-  deriving (Show, Eq)
+  deriving (Show)
+
+instance Eq DateTime where
+  (DateTime (d1,m1,y1,h1,mi1)) == (DateTime (d2,m2,y2,h2,mi2)) =
+    d1 == d2 && m1 == m2 && y1 == y2 && h1 == h2 && mi1 == mi2
 
 instance Ord DateTime where
   compare (DateTime (d1,m1,y1,_,_)) (DateTime (d2,m2,y2,_,_)) =
@@ -25,7 +29,11 @@ data Event =
         , category :: Maybe Category
         , recurrence :: Maybe Recurrence
         , holeDay :: Bool
-        } deriving (Show, Eq)
+        } deriving (Show)
+
+instance Eq Event where
+  (Event s1 st1 et1 c1 r1 b1) == (Event s2 st2 et2 c2 r2 b2) =
+    s1 == s2 && st1 == st2 && et1 == et2
 
 data Calendar = Calendar Name [Event] | Null deriving Show
 

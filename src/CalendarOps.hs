@@ -26,9 +26,17 @@ catExists _ [] = False
 catExists e (x:xs) = (e == x) || catExists e xs
 
 newEvent :: Event -> Calendar -> Either Error Calendar
-newEvent e (Calendar u es) = 
-  if eventExists e es then Left Exists 
-  else Right (Calendar u (expandEvent e ++ es))
+newEvent e@(Event s st et c r b) (Calendar u es)
+  | eventExists e es = Left Exists 
+  | b =
+    let (DateTime (d, m, y, _, _)) = endTime e
+        day = fromGregorian (toInteger y) m d
+        nday = (addDays . toInteger) 1 day
+        (y',m',d') = toGregorian nday
+        et' = DateTime (d', m', fromInteger y', 0, 0)
+        e' = Event s st et' c r b
+    in Right (Calendar u (expandEvent e' ++ es))
+  | otherwise = Right (Calendar u (expandEvent e ++ es))
 
 -- | Eliminamos un evento del calendario
 -- |
