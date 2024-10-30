@@ -20,41 +20,30 @@ import Prettyprinter
 import Common
 import Data.Time (fromGregorian, toGregorian, utctDay, getCurrentTime, Day, gregorianMonthLength)
 
--- | Color para el encabezado
+-- | Colores
 -- |
 constColor :: Doc AnsiStyle -> Doc AnsiStyle
 constColor = annotate (bold <> colorDull Green)
 
--- | Color para el separador
--- |
 sepColor :: Doc AnsiStyle -> Doc AnsiStyle
-sepColor = annotate (bold <> color Magenta)
+sepColor = annotate bold
 
--- | Color para el título del evento
--- |
 keywordColor :: Doc AnsiStyle -> Doc AnsiStyle
-keywordColor = annotate (italicized <> color Green)
+keywordColor = annotate (italicized <> color Blue)
 
--- | Color para títulos
--- |
 titleColor :: Doc AnsiStyle -> Doc AnsiStyle
 titleColor = annotate (italicized <> bold <> underlined <> color Green)
 
--- | Color para la fecha y horario
--- |
-timeColor :: Doc AnsiStyle -> Doc AnsiStyle
-timeColor = annotate (color Blue)
-
--- | Color para el resto
--- |
 nameColor :: Doc AnsiStyle -> Doc AnsiStyle
-nameColor = id
+nameColor = annotate (bold <> color Green)
 
+-- | Documentos
+-- |
 constDoc :: String -> Doc AnsiStyle
 constDoc s = constColor (pretty s)
 
 intDoc :: Int -> Doc AnsiStyle
-intDoc n = constColor (pretty (show n))
+intDoc n = sepColor (pretty (show n))
 
 sepDoc :: String -> Doc AnsiStyle
 sepDoc s = sepColor (pretty s)
@@ -116,7 +105,7 @@ printList (x:xs) p =
 printListEvent :: [Event] -> Doc AnsiStyle
 printListEvent es = printList es printEvent
 
--- | Imprime un calndario
+-- | Imprime un calendario
 -- |
 printCal :: Calendar -> Doc AnsiStyle
 printCal (Calendar u es) = 
@@ -314,12 +303,14 @@ monthly ev =
   let (y, m, _) = toGregorian (utctDay (unsafePerformIO getCurrentTime))
   in putDoc $ renderMonthly (fromInteger y) m ev
 
+
+-- | Rodea un string con un string a la izquierda y otro a la derecha
+-- |
 encloseWith :: String -> String -> Doc AnsiStyle -> Doc AnsiStyle
 encloseWith l r doc = pretty l <> doc <> pretty r
 
-alignN :: Int -> String -> String
-alignN n s = s ++ replicate (n - length s) ' '
-
+-- | Renderiza la visaulización de todos los eventos en formato de tabla
+-- |
 renderTable :: [Event] -> Doc AnsiStyle
 renderTable es = 
   let ses = sortEvs es
@@ -338,21 +329,21 @@ renderTable es =
 
 renderHeader :: [String] -> Doc AnsiStyle
 renderHeader hdrs = 
-  let h = hsep (map (encloseWith "| " " |" . annotate italicized . pretty . alignN 20) hdrs)
+  let h = hsep (map (encloseWith "| " " |" . annotate italicized . pretty . alignR 20) hdrs)
   in h
 
 renderRow :: Event -> Doc AnsiStyle
 renderRow (Event s st et _ _ _) =
   hsep
-    [ encloseWith "| " " |" (constDoc (alignN 20 s))
+    [ encloseWith "| " " |" (constDoc (alignR 20 s))
     , encloseWith "| " " |" (
         annotate bold 
-          (pretty (alignN 20
+          (pretty (alignR 20
             (show (first st) ++ "/" ++ show (second st) ++ "/" ++ show (third st)
             ++ " " ++ show (fourth st) ++ ":" ++ show (fifth st)))))
     , encloseWith "| " " |" (
         annotate bold 
-          (pretty (alignN 20
+          (pretty (alignR 20
             (show (first et) ++ "/" ++ show (second et) ++ "/" ++ show (third et)
             ++ " " ++ show (fourth et) ++ ":" ++ show (fifth et))))) ]
 
