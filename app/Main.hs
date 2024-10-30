@@ -240,8 +240,9 @@ handleCal' state cal cmd = case cmd of
     liftIO $ monthly (thisMonth cal)
     return (Just state)
   AllEvents -> do 
-    lift $ putStrLn ("Todos los eventos:\n\n" ++
-                    ppListEv (allEvents cal))
+    -- lift $ putStrLn ("Todos los eventos:\n\n" ++
+    --                 ppListEv (allEvents cal))
+    liftIO $ table (allEvents cal)
     return (Just state)
   Category c -> do
     let Calendar n ev = lfile state

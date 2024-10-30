@@ -144,6 +144,9 @@ ppListEv = render . printListEvent
 
  * Para mostrar los eventos del mes lo haremos en formato
  * de alamanaque
+
+ * Para mostrar todos los eventos lo hacemos en formato de
+ * tabla
 -}
 -------------------------------------------------------------
 -------------------------------------------------------------
@@ -310,3 +313,48 @@ monthly :: [Event] -> IO ()
 monthly ev = 
   let (y, m, _) = toGregorian (utctDay (unsafePerformIO getCurrentTime))
   in putDoc $ renderMonthly (fromInteger y) m ev
+
+encloseWith :: String -> String -> Doc AnsiStyle -> Doc AnsiStyle
+encloseWith l r doc = pretty l <> doc <> pretty r
+
+alignN :: Int -> String -> String
+alignN n s = s ++ replicate (n - length s) ' '
+
+renderTable :: [Event] -> Doc AnsiStyle
+renderTable es = 
+  let ses = sortEvs es
+      header = ["Event", "Start" , "End"]
+      rows = map renderRow es
+  in 
+    vsep 
+      [ titleDoc "\nTodos los eventos:"
+      , hardline
+      , pretty "|------------------------------------------------------------------------|"
+      , renderHeader header
+      , pretty "|------------------------------------------------------------------------|"
+      , vsep rows
+      , pretty "|------------------------------------------------------------------------|"
+      , hardline ]
+
+renderHeader :: [String] -> Doc AnsiStyle
+renderHeader hdrs = 
+  let h = hsep (map (encloseWith "| " " |" . annotate italicized . pretty . alignN 20) hdrs)
+  in h
+
+renderRow :: Event -> Doc AnsiStyle
+renderRow (Event s st et _ _ _) =
+  hsep
+    [ encloseWith "| " " |" (constDoc (alignN 20 s))
+    , encloseWith "| " " |" (
+        annotate bold 
+          (pretty (alignN 20
+            (show (first st) ++ "/" ++ show (second st) ++ "/" ++ show (third st)
+            ++ " " ++ show (fourth st) ++ ":" ++ show (fifth st)))))
+    , encloseWith "| " " |" (
+        annotate bold 
+          (pretty (alignN 20
+            (show (first et) ++ "/" ++ show (second et) ++ "/" ++ show (third et)
+            ++ " " ++ show (fourth et) ++ ":" ++ show (fifth et))))) ]
+
+table :: [Event] -> IO ()
+table ev = putDoc $ renderTable ev
