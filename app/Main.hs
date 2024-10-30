@@ -161,7 +161,7 @@ handleInter state@(S inter file lfile) cmd = case cmd of
   Close -> case lfile of
     Null -> lift $ putStrLn "No hay un archivo cargado.\n" >> return (Just state)
     (Calendar _ _) -> do 
-      lift $ writeFile file (render $ printCal lfile)
+      lift $ writeFile file (renderNoStyle $ printCal lfile)
       return (Just (state { lfile = Null }))
   Export -> case lfile of
     Null -> lift $ putStrLn "No hay un archivo cargado.\n" >> return (Just state)
@@ -231,16 +231,13 @@ handleCal' state cal cmd = case cmd of
                     ppListEv (searchEvent s ev))
     return (Just state)
   ThisDay -> do 
-    lift $ putStrLn ("Eventos de hoy:\n\n" ++ 
-                    ppListEv (thisDay cal))
+    liftIO $ timeline (thisDay cal)
     return (Just state) 
   ThisWeek -> do 
-    lift $ putStrLn ("Eventos de esta semana:\n\n" ++
-                    ppListEv (thisWeek cal))
+    liftIO $ weekly (thisWeek cal)
     return (Just state)
   ThisMonth -> do 
-    lift $ putStrLn ("Eventos de este mes:\n\n" ++
-                    ppListEv (thisMonth cal))
+    liftIO $ monthly (thisMonth cal)
     return (Just state)
   AllEvents -> do 
     lift $ putStrLn ("Todos los eventos:\n\n" ++

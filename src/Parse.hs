@@ -1,7 +1,15 @@
 module Parse where
 
 import Text.Parsec
-    ( eof, optionMaybe, sepBy, (<|>), parse, try, ParseError, Parsec )
+  ( eof
+  , optionMaybe
+  , sepBy
+  , (<|>)
+  , parse
+  , try
+  , ParseError
+  , Parsec
+  , manyTill )
 import qualified Text.Parsec.Token as Tok
 import Text.ParserCombinators.Parsec.Language -- ( emptyDef )
 import qualified Text.Parsec.Expr as Ex
@@ -232,6 +240,10 @@ parseRecurrence =
   <|> try parseWeekly
   <|> parseMonthly
 
+-- | Parsea el título de un evento
+parseSummary :: P String
+parseSummary = manyTill anyChar (try space)
+
 ------------------------------------
 -- | Parsers para eventos
 ------------------------------------
@@ -301,7 +313,7 @@ parseDate = parseDates <|> parseDateNoMin <|> parseDateNoHour
 -- | Parsea un evento
 parseEvent :: P Event
 parseEvent = do
-  s <- identifier
+  s <- parseSummary
   (st, b) <- parseDate
   if b
   then do 
@@ -318,7 +330,7 @@ parseEvent = do
 parseEventE :: P Event
 parseEventE = do
   reserved "E"
-  s <- identifier
+  s <- parseSummary
   (st, b) <- parseDate
   if b
   then do 
@@ -333,12 +345,11 @@ parseEventE = do
 
 -- | Parsea una lista de eventos
 parseList :: P [Event]
-parseList = brackets (sepBy parseEvent comma)
+parseList = sepBy parseEventE comma
 
 parseCal :: P Calendar
 parseCal = do 
-  reserved "Cal"
-  reservedOp ":"
+  reserved "C"
   name <- identifier
   Calendar name <$> parseList
 
