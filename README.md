@@ -40,7 +40,7 @@ La estructura del proyecto es la siguiente:
 ├── Ejemplos
 │   ├── Clases.ics
 │   ├── ejemplo1.cal
-│   ├── ejemplo2.cal
+│   └── ejemplo2.cal
 ├── calendario.cabal
 ├── README.md
 ├── Setup.hs
@@ -56,7 +56,7 @@ La estructura del proyecto es la siguiente:
   - `PrettyPrinter` tiene el Pretty Printer del lenguaje. Este sirve para imprimir los programas de una manera más legible que haciendo `show`.
   - `RecurrenceOps` tiene las operaciones que manejan la recurrencia de eventos.
 
-* En el directorio `Ejemplos` hay algunos -*shock*- ejemplos de archivos .cal y .ics. 
+* En el directorio `Ejemplos` hay algunos ejemplos de archivos .cal y .ics. 
 
 * El resto de los archivos son de configuración del proyecto y el informe.
 
