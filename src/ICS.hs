@@ -2,7 +2,7 @@ module ICS where
 
 import Data.List as L
 import Data.Text as T
-import Data.Time.Calendar (gregorianMonthLength)
+import Data.Time.Calendar ( gregorianMonthLength )
 import Data.Maybe
 
 import Common
@@ -75,8 +75,8 @@ exportToIcs (Calendar n es) = do
         , L.intercalate "\n" (L.map event2ics es)
         , "END:VCALENDAR"]
       file = n
-  writeFile file content
-  putStrLn $ "Calendario exportado a: " ++ file
+  writeFile (file ++ ".ics") content
+  putStrLn $ "Calendario exportado a: " ++ (file ++ ".ics")
 
 -- | Resta 3 horas
 -- |
@@ -107,6 +107,13 @@ str2dt str =
       (min, _) = L.splitAt 2 r4
   in DateTime (read d, read m, read y, read h, read min)
 
+str2dt' :: String -> DateTime
+str2dt' str = 
+  let (y, r1) = L.splitAt 4 str
+      (m, r2) = L.splitAt 2 r1
+      (d, _) = L.splitAt 2 r2
+  in DateTime (read d, read m, read y, 0, 0)
+
 -- | Convierte un string en una tupla clave valor
 -- |
 str2tuple :: String -> Maybe (String, String)
@@ -119,6 +126,16 @@ str2tuple str =
 -- |
 lookupKey :: String -> [(String, String)] -> Maybe String
 lookupKey k = fmap snd . L.find ((== k) . fst)
+
+parseHoleDay :: [String] -> Maybe Event
+parseHoleDay str = do
+  let ps = mapMaybe str2tuple str
+  dst <- lookupKey "DTSTART;VALUE=DATE" ps
+  det <- lookupKey "DTEND;VALUE=DATE" ps
+  s <- lookupKey "SUMMARY" ps
+  let st = str2dt' dst
+      et = str2dt' det
+  return $ Event s st et Nothing Nothing True
 
 -- | Parsea una evento en formato .ical
 -- |
@@ -146,5 +163,6 @@ importIcs :: FilePath -> Calendar -> IO Calendar
 importIcs file (Calendar n e) = do
   cont <- fmap (L.map (L.filter (/= '\r')) . L.lines) (readFile file)
   let es = mapMaybe parseICal (splitEv cont)
-  return $ Calendar n (es ++ e)
+      es' = mapMaybe parseHoleDay (splitEv cont)
+  return $ Calendar n (es ++ es' ++ e)
 

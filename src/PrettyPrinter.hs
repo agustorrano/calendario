@@ -4,12 +4,15 @@ import System.IO.Unsafe ( unsafePerformIO )
 import Data.Text ( unpack )
 import Data.List ( sortBy )
 import Data.Ord ( comparing )
+import Data.Time 
+  ( fromGregorian, toGregorian, utctDay
+  , getCurrentTime, Day, gregorianMonthLength )
 import Data.Time.Calendar.WeekDate ( toWeekDate )
 import Prettyprinter.Render.Terminal
   ( renderStrict, italicized, bold
   , underlined, color, colorDull
   , Color (..), AnsiStyle, putDoc )
-import Prettyprinter.Render.String (renderString)
+import Prettyprinter.Render.String ( renderString )
 import Prettyprinter
   ( (<+>), annotate, defaultLayoutOptions,
     layoutSmart, nest, line, comma, colon,
@@ -18,7 +21,6 @@ import Prettyprinter
     align, vcat, hardline, hcat )
 
 import Common
-import Data.Time (fromGregorian, toGregorian, utctDay, getCurrentTime, Day, gregorianMonthLength)
 
 -- | Colores
 -- |
@@ -90,7 +92,7 @@ printEvent :: Event -> Doc AnsiStyle
 printEvent (Event s st et Nothing r b) = 
   keywordDoc "E" <+> nameDoc s <+> printDate st <+> sepDoc ">" <+> printDate et
 printEvent (Event s st et (Just c) r b) =
-  keywordDoc "E" <+> nameDoc s <+> printDate st <+> sepDoc ">" <+> printDate et <+> nameDoc c
+  keywordDoc "E" <+> nameDoc s <+> printDate st <+> sepDoc ">" <+> printDate et <+> keywordDoc c
 
 -- | Imprime una lista
 -- |
@@ -134,8 +136,8 @@ ppListEv = render . printListEvent
  * Para mostrar los eventos del mes lo haremos en formato
  * de alamanaque
 
- * Para mostrar todos los eventos lo hacemos en formato de
- * tabla
+ * Para mostrar todos los eventos o los eventos de una misma
+ * categoría, lo hacemos en formato de tabla
 -}
 -------------------------------------------------------------
 -------------------------------------------------------------
@@ -177,7 +179,7 @@ renderEvents e =
 renderBlock :: Int -> Event -> Doc AnsiStyle
 renderBlock h e =
   let evInH = fourth (startTime e) <= h && fourth (endTime e) > h
-      block = if evInH
+      block = if evInH || holeDay e
               then annotate (color Green) (pretty "████")
               else pretty "    "
   in block
@@ -227,7 +229,11 @@ renderDayEvents d es =
          annotate bold (pretty (fourth (endTime e))) <>
          annotate bold (pretty ":") <>
          annotate bold (pretty (fifth (endTime e))) <>
-         annotate bold (pretty "]") | e <- dayEvents]
+         annotate bold (pretty "]") <+>
+         case category e of
+          Nothing -> pretty " "
+          Just cat -> hsep [pretty "→", keywordDoc cat] 
+         | e <- dayEvents]
   in annotate italicized (pretty d) <> 
      annotate italicized (pretty ":") <> 
      hardline <> event <> hardline
@@ -292,11 +298,14 @@ renderEvList :: [Event] -> Doc AnsiStyle
 renderEvList = vsep . map renderEvent
 
 renderEvent :: Event -> Doc AnsiStyle
-renderEvent (Event s st et _ _ _) =
+renderEvent (Event s st et c _ _) =
   annotate bold (pretty (first st)) <>
   annotate bold (pretty "/") <>
   annotate bold (pretty (second st)) <+>
-  constDoc s
+  constDoc s <+>
+  case c of
+    Nothing -> pretty " "
+    Just cat -> hsep [pretty "→", keywordDoc cat]
 
 monthly :: [Event] -> IO ()
 monthly ev = 
@@ -311,20 +320,20 @@ encloseWith l r doc = pretty l <> doc <> pretty r
 
 -- | Renderiza la visaulización de todos los eventos en formato de tabla
 -- |
-renderTable :: [Event] -> Doc AnsiStyle
-renderTable es = 
+renderTable :: [Event] -> String -> Doc AnsiStyle
+renderTable es title = 
   let ses = sortEvs es
-      header = ["Event", "Start" , "End"]
+      header = ["Event", "Start" , "End", "Category"]
       rows = map renderRow es
   in 
     vsep 
-      [ titleDoc "\nTodos los eventos:"
+      [ titleDoc ("\n" ++ title)
       , hardline
-      , pretty "|------------------------------------------------------------------------|"
+      , pretty "|-------------------------------------------------------------------------------------------------|"
       , renderHeader header
-      , pretty "|------------------------------------------------------------------------|"
+      , pretty "|-------------------------------------------------------------------------------------------------|"
       , vsep rows
-      , pretty "|------------------------------------------------------------------------|"
+      , pretty "|-------------------------------------------------------------------------------------------------|"
       , hardline ]
 
 renderHeader :: [String] -> Doc AnsiStyle
@@ -333,7 +342,7 @@ renderHeader hdrs =
   in h
 
 renderRow :: Event -> Doc AnsiStyle
-renderRow (Event s st et _ _ _) =
+renderRow (Event s st et c _ _) =
   hsep
     [ encloseWith "| " " |" (constDoc (alignR 20 s))
     , encloseWith "| " " |" (
@@ -345,7 +354,11 @@ renderRow (Event s st et _ _ _) =
         annotate bold 
           (pretty (alignR 20
             (show (first et) ++ "/" ++ show (second et) ++ "/" ++ show (third et)
-            ++ " " ++ show (fourth et) ++ ":" ++ show (fifth et))))) ]
+            ++ " " ++ show (fourth et) ++ ":" ++ show (fifth et)))))
+    , encloseWith "| " " |" 
+      (case c of
+        Nothing -> keywordDoc (alignR 20 " ")
+        Just cat -> keywordDoc (alignR 20 cat)) ]
 
-table :: [Event] -> IO ()
-table ev = putDoc $ renderTable ev
+table :: [Event] -> String -> IO ()
+table ev title = putDoc $ renderTable ev title

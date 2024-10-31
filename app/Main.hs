@@ -3,7 +3,7 @@ module Main where
 import Control.Exception              
   ( catch
   , IOException )
-import Control.Monad.Except
+import Control.Monad.Except hiding ( liftEither )
 import qualified Control.Monad.Catch as MC
 import Data.Char
 import Data.List as L
@@ -160,7 +160,7 @@ handleInter state@(S inter file lfile) cmd = case cmd of
   Close -> case lfile of
     Null -> lift $ putStrLn "No hay un archivo cargado.\n" >> return (Just state)
     (Calendar _ _) -> do 
-      lift $ writeFile file (renderNoStyle $ printCal lfile)
+      lift $ writeFile (file ++ ".cal") (renderNoStyle $ printCal lfile)
       return (Just (state { lfile = Null }))
   Export -> case lfile of
     Null -> lift $ putStrLn "No hay un archivo cargado.\n" >> return (Just state)
@@ -171,7 +171,7 @@ handleInter state@(S inter file lfile) cmd = case cmd of
     Null -> lift $ putStrLn "No hay un archivo cargado.\n" >> return (Just state)
     (Calendar _ _) -> do
       cal <- lift $ importIcs f lfile
-      return (Just state { file = f, lfile = cal })
+      return (Just state { lfile = cal })
 
 handleCal :: State -> CalCom -> InputT IO (Maybe State)
 handleCal state (NewCalendar n) = do 
@@ -226,25 +226,23 @@ handleCal' state cal cmd = case cmd of
     Right newCal -> return (Just (state { lfile = newCal }))
   SearchEvent s -> do
     let Calendar n ev = lfile state
-    lift $ putStrLn ("Eventos " ++ s ++ " encontrados:\n\n" ++
-                    ppListEv (searchEvent s ev))
+    lift $ table (searchEvent s ev) ("Eventos " ++ s ++ " encontrados:")
     return (Just state)
   ThisDay -> do 
-    liftIO $ timeline (thisDay cal)
+    lift $ timeline (thisDay cal)
     return (Just state) 
   ThisWeek -> do 
-    liftIO $ weekly (thisWeek cal)
+    lift $ weekly (thisWeek cal)
     return (Just state)
   ThisMonth -> do 
-    liftIO $ monthly (thisMonth cal)
+    lift $ monthly (thisMonth cal)
     return (Just state)
   AllEvents -> do 
-    liftIO $ table (allEvents cal)
+    lift $ table (allEvents cal) "Todos los eventos:"
     return (Just state)
   Category c -> do
     let Calendar n ev = lfile state
-    lift $ putStrLn ("Eventos categorizados como " ++ c ++ ":\n\n" ++
-                    ppListEv (sameCategory ev c))
+    lift $ table (sameCategory ev c) ("Eventos categorizados como " ++ c ++ ":")
     return (Just state)
 
 helpTxt :: [InteractiveCommand] -> String
@@ -294,5 +292,11 @@ compileFile state@(S inter file lfile) f =
       )
     cal <- case parse (totParser parseCal) f x of
       Left e -> lift $ print e >> return Nothing
-      Right c -> return (Just c)
+      Right (Calendar n es) -> do
+        res <- foldM (\cal ev -> liftEither (newEvent ev cal)) (Calendar n []) es
+        return (Just res)
     maybe (return state) (\s -> return (state { file = f, lfile = s })) cal
+
+liftEither :: Either Error Calendar -> InputT IO Calendar
+liftEither (Left _) = lift $ putStrLn "Error en newEvent." >> return Null
+liftEither (Right cal) = return cal

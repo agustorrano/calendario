@@ -1,6 +1,6 @@
 module CalendarOps where
 
-import System.IO.Unsafe (unsafePerformIO)
+import System.IO.Unsafe ( unsafePerformIO )
 import Data.Time
 import Data.Time.Calendar.OrdinalDate 
   ( mondayStartWeek
@@ -8,6 +8,13 @@ import Data.Time.Calendar.OrdinalDate
 import Data.Maybe
 
 import Common
+    ( Event(Event, category, endTime, summary),
+      DateTime(..),
+      Recurrence,
+      Error(Unexists, Exists),
+      Calendar(Calendar),
+      Name,
+      Category )
 import RecurrenceOps
 
 -- | Creamos un nuevo calendario 
@@ -20,10 +27,6 @@ newCalendar n = Calendar n []
 eventExists :: Event -> [Event] -> Bool
 eventExists _ [] = False
 eventExists e (x:xs) = (e == x) || eventExists e xs
-
-catExists :: Category -> [Category] -> Bool
-catExists _ [] = False
-catExists e (x:xs) = (e == x) || catExists e xs
 
 newEvent :: Event -> Calendar -> Either Error Calendar
 newEvent e@(Event s st et c r b) (Calendar u es)
