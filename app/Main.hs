@@ -89,8 +89,8 @@ commands =
   , Cmd [":help", ":?"] "" (const Help) "Mostrar esta lista de comandos"
   , Cmd [":ops", ":o"] "" (const Ops)  "Mostrar las operaciones del calendario"
   , Cmd [":close", ":c"] "" (const Close) "Cerrar y guardar el calendario actual"
-  , Cmd [":export", ":e"] "" (const Export) "Exportar un calendario a un archivo .ical"
-  , Cmd [":import", ":i"] "<file>" Import "Importar un calendario .ical"
+  , Cmd [":export", ":e"] "" (const Export) "Exportar un calendario a un archivo .ics"
+  , Cmd [":import", ":i"] "<file>" Import "Importar un calendario .ics"
   ]
 
 -- Parseo de comandos de calendario
@@ -247,14 +247,13 @@ handleCal' state cal cmd = case cmd of
 
 helpTxt :: [InteractiveCommand] -> String
 helpTxt cs =
-  "Lista de comandos:  Cualquier comando puede ser abreviado a :c donde\n"
-    ++ "c es el primer caracter del nombre completo.\n\n"
+  "Lista de comandos:\n\n"
     ++ L.unlines 
       (L.map
         (\(Cmd c a _ d) -> 
           let ct = L.intercalate ", "
                    (L.map (++ if L.null a then "" else " " ++ a) c)
-          in ct ++ L.replicate ((24 - L.length ct) `max` 2) ' ' ++ d
+          in ct ++ L.replicate ((30 - L.length ct) `max` 2) ' ' ++ d
         )
         cs
       )                
