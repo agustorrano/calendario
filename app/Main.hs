@@ -87,6 +87,7 @@ commands =
   , Cmd [":help", ":?"] "" (const Help) "Mostrar esta lista de comandos"
   , Cmd [":ops", ":o"] "" (const Ops) "Mostrar las operaciones del calendario"
   , Cmd [":close", ":c"] "" (const Close) "Cerrar y guardar el calendario actual"
+  , Cmd [":save", ":s"] "" (const Save) "Guarda el calendario actual"
   , Cmd [":export", ":e"] "" (const Export) "Exportar un calendario a un archivo .ics"
   , Cmd [":import", ":i"] "<file>" Import "Importar un calendario .ics"
   ]
@@ -162,6 +163,12 @@ handleInter st Close =
     c -> do 
       lift $ writeFile (file st) (renderNoStyle $ printCal $ lfile st)
       return (Just (st { lfile = Null }))
+handleInter st Save =
+  case lfile st of
+    Null -> lift $ putStrLn "No hay un archivo cargado." >> return (Just st)
+    c -> do
+      lift $ writeFile (file st) (renderNoStyle $ printCal $ lfile st)
+      return (Just st)
 handleInter st Export = 
   case lfile st of
     Null -> lift $ putStrLn "No hay un archivo cargado." >> return (Just st)
