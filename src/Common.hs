@@ -23,13 +23,14 @@ data Recurrence =
   deriving (Show, Eq)
 
 data Event = 
-  Event { summary :: String
-        , startTime :: DateTime
-        , endTime :: DateTime
-        , category :: Maybe Category
-        , recurrence :: Maybe Recurrence
-        , holeDay :: Bool
-        } deriving (Show)
+  Event 
+    { summary :: String
+    , startTime :: DateTime
+    , endTime :: DateTime
+    , category :: Maybe Category
+    , recurrence :: Maybe Recurrence
+    , holeDay :: Bool
+    } deriving (Show)
 
 instance Eq Event where
   (Event s1 st1 et1 c1 r1 b1) == (Event s2 st2 et2 c2 r2 b2) =

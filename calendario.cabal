@@ -15,7 +15,7 @@ maintainer:          agustorrano2003@gmail.com
 -- copyright:
 -- category:
 build-type:          Simple
-extra-source-files:  README.md, ChangeLog.md, README.pdf
+extra-source-files:  README.md, ChangeLog.md
 
 library
   exposed-modules:

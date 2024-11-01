@@ -7,6 +7,9 @@ import Text.Parsec
   , (<|>)
   , parse
   , try
+  , many1
+  , optional
+  , space
   , ParseError
   , Parsec
   , manyTill
@@ -70,6 +73,11 @@ reservedOp = Tok.reservedOp lexer
 ------------------------------------
 -- | Parsers
 ------------------------------------
+
+num :: P Int
+num = do
+  n <- many1 digit
+  return $ read n
 
 -- | Parsea los comandos
 -- |
@@ -177,7 +185,7 @@ parseDates = try (do
   month <- integer
   reservedOp "/"
   year <- integer
-  h <- integer
+  h <- num
   reservedOp ":"
   m <- integer
   return 
@@ -193,7 +201,8 @@ parseDateNoMin = try (do
   month <- integer
   reservedOp "/"
   year <- integer
-  h <- integer
+  h <- num
+  optional space
   return 
       (DateTime (fromIntegral day, fromIntegral month,
       fromIntegral year, fromIntegral h, 0), False))
@@ -280,7 +289,8 @@ third (DateTime (_, _, y, _, _)) = y
 -- |
 parseET1 :: P DateTime
 parseET1 = do
-  reservedOp ">"
+  reservedOp "-"
+  optional space
   (et, b') <- try parseDates <|> try parseDateNoMin
   return et
 
@@ -288,8 +298,9 @@ parseET1 = do
 -- |
 parseET2 :: DateTime -> P DateTime
 parseET2 st = do
-  reservedOp ">"
-  h <- integer
+  reservedOp "-"
+  optional space
+  h <- num
   reservedOp ":"
   m <- integer
   let d = first st
@@ -302,8 +313,10 @@ parseET2 st = do
 -- |
 parseET3 :: DateTime -> P DateTime
 parseET3 st = do
-  reservedOp ">"
-  h <- integer
+  reservedOp "-"
+  optional space
+  h <- num
+  optional space
   let d = first st
       mon = second st
       y = third st
@@ -323,7 +336,7 @@ parseCatRec = do
 parseEvTrue :: P (Maybe DateTime, Maybe Category, Maybe Recurrence)
 parseEvTrue = 
   try (do 
-    reservedOp ">"
+    reservedOp "-"
     (et, b') <- parseDateNoHour
     (c, r) <- parseCatRec
     return (Just et, c, r))

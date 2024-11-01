@@ -96,15 +96,15 @@ commands =
 -- Parseo de comandos de calendario
 calCommands :: [CalendarCommand]
 calCommands = 
-  [ CCmd "newCalendar" ["<owner>"] "Crear un nuevo calendario"
-  , CCmd "newEvent" ["<event>"] "Crear un nuevo evento"
+  [ CCmd "C" ["<owner>"] "Crear un nuevo calendario"
+  , CCmd "E" ["<summary>", "<start>", "-", "<end>"] "Crear un nuevo evento"
   , CCmd "modify" ["<event>"] "Modificar un evento"
   , CCmd "delete" ["<event>"] "Eliminar un evento"
   , CCmd "search" ["<string>"] "Buscar un evento"
   , CCmd "day" ["<day>"] "Mostrar los eventos de un dia"
   , CCmd "week" ["<week>"] "Mostrar los eventos de una semana"
   , CCmd "month" ["<month>"] "Mostrar los eventos de un mes"
-  , CCmd "allEvents" [] "Mostrar todos los eventos"
+  , CCmd "all" [] "Mostrar todos los eventos"
   , CCmd "category" ["<category>"] "Mostrar los eventos de una misma categoria"
   ]
 
@@ -176,7 +176,7 @@ handleInter state@(S inter file lfile) cmd = case cmd of
 handleCal :: State -> CalCom -> InputT IO (Maybe State)
 handleCal state (NewCalendar n) = do 
   let new = newCalendar n
-  return (Just (state { file = n ++ ".ical", lfile = new }))
+  return (Just (state { file = n ++ ".cal", lfile = new }))
 handleCal state cmd = case lfile state of
   Null -> do lift $ putStrLn "Error: no hay un archivo cargado."
              return (Just state)
@@ -219,7 +219,7 @@ handleCal' state cal cmd = case cmd of
         let Calendar n ev = lfile state
             ev' = modifyCategory e ev (fromJust y)
         return (Just (state { lfile = Calendar n ev' }))
-      (Just _) -> do lift $ putStrLn "Error: se espera un número del 1 al 5." >> return (Just state) 
+      (Just _) -> do lift $ putStrLn "Error: se espera un número del 1 al 4." >> return (Just state) 
   DeleteEvent e -> case deleteEvent e cal of
     Left _ -> do lift $ putStrLn ("Error: evento" ++ summary e ++ "no existe.")
                  return (Just state)

@@ -49,11 +49,11 @@ La estructura del proyecto es la siguiente:
 * En el directorio `app` se define el módulo `Main`, que implementa el ejecutable final. 
 
 * En el directorio `src` se encuentran los módulos:
-  - `CalendarOps` tiene las implementaciones de todas las operaciones del calndario.
+  - `CalendarOps` tiene las implementaciones de todas las operaciones del calendario.
   - `Common` define los tipos de datos y comandos. 
   - `ICS` tiene las operaciones utilizadas para la importación y exportación de archivos .ics.
   - `Parser` tiene el esqueleto para el parser.
-  - `PrettyPrinter` tiene el Pretty Printer del lenguaje. Este sirve para imprimir los programas de una manera más legible que haciendo `show`.
+  - `PrettyPrinter` tiene el Pretty Printer del lenguaje. Este sirve para imprimir los calendarios de una manera más legible que haciendo `show`.
   - `RecurrenceOps` tiene las operaciones que manejan la recurrencia de eventos.
 
 * En el directorio `Ejemplos` hay algunos ejemplos de archivos .cal y .ics. 
