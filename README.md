@@ -20,6 +20,7 @@ Lista de comandos:
 :help, :?                     Mostrar esta lista de comandos
 :ops, :o                      Mostrar las operaciones del calendario
 :close, :c                    Cerrar y guardar el calendario actual
+:save, :s                     Guarda el calendario actual
 :export, :e                   Exportar un calendario a un archivo .ics
 :import <file>, :i <file>     Importar un calendario .ics
 ```
