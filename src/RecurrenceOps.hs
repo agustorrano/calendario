@@ -3,9 +3,9 @@ module RecurrenceOps where
 import Data.Time
   ( fromGregorian
   , addDays
-  , diffDays
   , addGregorianMonthsClip
-  , Day, toGregorian )
+  , Day
+  , toGregorian )
 
 import Common
 

@@ -38,12 +38,7 @@ instance Eq Event where
 
 data Calendar = Calendar Name [Event] | Null deriving Show
 
-data Error = Exists | Unexists | NoRec deriving Show
-
-data CompileForm = 
-    CompileInteractive  String
-  | CompileFile         String
-  deriving Show
+data Error = Exists | Unexists deriving Show
 
 data CalCom = 
     NewCalendar Name

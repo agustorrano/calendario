@@ -43,20 +43,8 @@ langDef = emptyDef
 whiteSpace :: P ()
 whiteSpace = Tok.whiteSpace lexer
 
-natural :: P Integer
-natural = Tok.natural lexer
-
 integer :: P Integer
 integer = Tok.integer lexer
-
-stringLiteral :: P String
-stringLiteral = Tok.stringLiteral lexer
-
-parens :: P a -> P a
-parens = Tok.parens lexer
-
-brackets :: P a -> P a
-brackets = Tok.brackets lexer
 
 comma :: P String
 comma = Tok.comma lexer
@@ -108,7 +96,7 @@ parseNEvent = do
   reserved "E"
   NewEvent <$> parseEvent
 
--- | Parsea la operación para agregar un evento
+-- | Parsea la operación para modificar un evento
 -- |
 parseMEvent :: P CalCom
 parseMEvent = do 
@@ -129,28 +117,28 @@ parseSEvent = do
   reserved "search"
   SearchEvent <$> identifier
 
--- | Parsea la operación para ver un día completo
+-- | Parsea la operación para ver los eventos del día
 -- |
 parseDay :: P CalCom
 parseDay = do 
   reserved "day"
   return ThisDay
 
--- | Parsea la operación para ver una semana completa
+-- | Parsea la operación para ver los eventos de la semana
 -- |
 parseWeek :: P CalCom
 parseWeek = do 
   reserved "week"
   return ThisWeek
 
--- | Parsea la operación para ver un mes completo
+-- | Parsea la operación para ver los eventos del mes
 -- |
 parseMonth :: P CalCom
 parseMonth = do 
   reserved "month"
   return ThisMonth
 
--- | Parsea la operación para ver todos los meses
+-- | Parsea la operación para ver todos los eventos
 -- |
 parseAllEvents :: P CalCom
 parseAllEvents = do 

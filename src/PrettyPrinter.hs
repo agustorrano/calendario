@@ -5,20 +5,40 @@ import Data.Text ( unpack )
 import Data.List ( sortBy )
 import Data.Ord ( comparing )
 import Data.Time 
-  ( fromGregorian, toGregorian, utctDay
-  , getCurrentTime, Day, gregorianMonthLength )
+  ( fromGregorian
+  , toGregorian
+  , utctDay
+  , getCurrentTime
+  , Day
+  , gregorianMonthLength )
 import Data.Time.Calendar.WeekDate ( toWeekDate )
 import Prettyprinter.Render.Terminal
-  ( renderStrict, italicized, bold
-  , underlined, color, colorDull
-  , Color (..), AnsiStyle, putDoc )
+  ( renderStrict
+  , italicized
+  , bold
+  , underlined
+  , color
+  , colorDull
+  , Color (..)
+  , AnsiStyle
+  , putDoc )
 import Prettyprinter.Render.String ( renderString )
 import Prettyprinter
-  ( (<+>), annotate, defaultLayoutOptions,
-    layoutSmart, nest, line, comma, colon,
-    sep, parens, brackets, space, unAnnotate,
-    Doc, Pretty(pretty), vsep, indent, hsep, 
-    align, vcat, hardline, hcat )
+  ( (<+>)
+  , annotate
+  , defaultLayoutOptions
+  , layoutSmart
+  , line
+  , comma
+  , space
+  , unAnnotate
+  , Doc
+  , Pretty(pretty)
+  , vsep
+  , hsep
+  , vcat
+  , hardline
+  , hcat )
 
 import Common
 
@@ -39,6 +59,9 @@ titleColor = annotate (italicized <> bold <> underlined <> color Green)
 nameColor :: Doc AnsiStyle -> Doc AnsiStyle
 nameColor = annotate (bold <> color Green)
 
+numberColor :: Doc AnsiStyle -> Doc AnsiStyle
+numberColor = annotate bold
+
 -- | Documentos
 -- |
 constDoc :: String -> Doc AnsiStyle
@@ -58,6 +81,9 @@ titleDoc s = titleColor (pretty s)
 
 nameDoc :: String -> Doc AnsiStyle
 nameDoc s = nameColor (pretty s)
+
+numberDoc :: Int -> Doc AnsiStyle
+numberDoc n = numberColor (pretty n)
 
 -- | Imprime una fecha
 -- |
@@ -119,9 +145,6 @@ render = unpack . renderStrict . layoutSmart defaultLayoutOptions
 renderNoStyle :: Doc AnsiStyle -> String
 renderNoStyle = renderString . layoutSmart defaultLayoutOptions . unAnnotate
 
-ppListEv :: [Event] -> String
-ppListEv = render . printListEvent
-
 -------------------------------------------------------------
 -------------------------------------------------------------
 {- 
@@ -144,17 +167,20 @@ ppListEv = render . printListEvent
 
 -- | Ordena los eventos
 -- |
-sortEvs :: [Event] -> [Event]
-sortEvs = sortBy (comparing (fourth . startTime))
+sortEvsHour :: [Event] -> [Event]
+sortEvsHour = sortBy (comparing (fourth . startTime))
 
 sortEvsDay :: [Event] -> [Event]
 sortEvsDay = sortBy (comparing (first . startTime))
+
+sortEvs :: [Event] -> [Event]
+sortEvs = sortBy (comparing startTime)
 
 -- | Renderiza el cronograma del día completo en forma horizontal
 -- |
 renderTimeline ::[Event] -> Doc AnsiStyle
 renderTimeline es = 
-  let ses = sortEvs es
+  let ses = sortEvsHour es
   in 
     vsep
       [ titleDoc "\nEventos de hoy:"
@@ -207,7 +233,7 @@ dayOfWeek (DateTime (d,m,y,_,_)) =
 -- |
 renderWeekly :: [Event] -> Doc AnsiStyle
 renderWeekly es =
-  let ses = sortEvs es
+  let ses = sortEvsHour es
   in 
     vsep 
       [ titleDoc "\nEventos de la semana:"
@@ -221,15 +247,15 @@ renderDayEvents d es =
   let dayEvents = filter (\e -> dayOfWeek (startTime e) == d) es
       event = vcat 
         [constDoc (summary e) <+> 
-         annotate bold (pretty "[") <>
-         annotate bold (pretty (fourth (startTime e))) <>
-         annotate bold (pretty ":") <>
-         annotate bold (pretty (fifth (startTime e))) <+>
-         annotate bold (pretty "-") <+>
-         annotate bold (pretty (fourth (endTime e))) <>
-         annotate bold (pretty ":") <>
-         annotate bold (pretty (fifth (endTime e))) <>
-         annotate bold (pretty "]") <+>
+         sepDoc "[" <>
+         numberDoc (fourth (startTime e)) <>
+         sepDoc ":" <>
+         numberDoc (fifth (startTime e)) <+>
+         sepDoc "-" <+>
+         numberDoc (fourth (endTime e)) <>
+         sepDoc ":" <>
+         numberDoc (fifth (endTime e)) <>
+         sepDoc "]" <+>
          case category e of
           Nothing -> pretty " "
           Just cat -> hsep [pretty "→", keywordDoc cat] 
@@ -253,6 +279,8 @@ generateDays y m =
   let year = toInteger y 
   in [fromGregorian year m d | d <- [1 .. gregorianMonthLength year m]]
 
+-- | Crea una lista de listas a partir de una lista
+-- |
 chunk :: Int -> [a] -> [[a]]
 chunk _ [] = []
 chunk n xs = take n xs : chunk n (drop n xs)
@@ -299,9 +327,9 @@ renderEvList = vsep . map renderEvent
 
 renderEvent :: Event -> Doc AnsiStyle
 renderEvent (Event s st et c _ _) =
-  annotate bold (pretty (first st)) <>
-  annotate bold (pretty "/") <>
-  annotate bold (pretty (second st)) <+>
+  numberDoc (first st) <>
+  sepDoc "/" <>
+  numberDoc (second st) <+>
   constDoc s <+>
   case c of
     Nothing -> pretty " "
@@ -318,22 +346,25 @@ monthly ev =
 encloseWith :: String -> String -> Doc AnsiStyle -> Doc AnsiStyle
 encloseWith l r doc = pretty l <> doc <> pretty r
 
+dotLine :: Doc AnsiStyle
+dotLine = pretty "|-------------------------------------------------------------------------------------------------|"
+
 -- | Renderiza la visaulización de todos los eventos en formato de tabla
 -- |
 renderTable :: [Event] -> String -> Doc AnsiStyle
 renderTable es title = 
   let ses = sortEvs es
       header = ["Event", "Start" , "End", "Category"]
-      rows = map renderRow es
+      rows = map renderRow ses
   in 
     vsep 
       [ titleDoc ("\n" ++ title)
       , hardline
-      , pretty "|-------------------------------------------------------------------------------------------------|"
+      , dotLine
       , renderHeader header
-      , pretty "|-------------------------------------------------------------------------------------------------|"
+      , dotLine
       , vsep rows
-      , pretty "|-------------------------------------------------------------------------------------------------|"
+      , dotLine
       , hardline ]
 
 renderHeader :: [String] -> Doc AnsiStyle

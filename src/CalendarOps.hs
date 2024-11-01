@@ -5,16 +5,8 @@ import Data.Time
 import Data.Time.Calendar.OrdinalDate 
   ( mondayStartWeek
   , fromMondayStartWeek)
-import Data.Maybe
 
 import Common
-    ( Event(Event, category, endTime, summary),
-      DateTime(..),
-      Recurrence,
-      Error(Unexists, Exists),
-      Calendar(Calendar),
-      Name,
-      Category )
 import RecurrenceOps
 
 -- | Creamos un nuevo calendario 
@@ -87,14 +79,6 @@ modifyCategory e@(Event t st et _ r b) (x:xs) c =
     let ev = Event t st et (Just c) r b
     in (ev:xs)
   else x:modifyCategory e xs c
-
-modifyRec :: Event -> [Event] -> Recurrence -> [Event]
-modifyRec _ [] _ = []
-modifyRec e@(Event t st et c _ b) (x:xs) r =
-  if e == x then
-    let ev = Event t st et c (Just r) b
-    in (ev:xs)
-  else x:modifyRec e xs r
 
 -- | Buscamos un evento en el calendario
 -- |

@@ -28,7 +28,7 @@ adjustDate d m y daysInMonth
   where nextM = if m == 12 then 1 else m + 1
         nextY = if m == 12 then y + 1 else y
 
--- | Convierte un DateTime en un string con el formato para un archivo .ical
+-- | Convierte un DateTime en un string con el formato para un archivo .ics
 -- |
 dt2str :: DateTime -> String
 dt2str (DateTime (d, m, y, h, min)) =
@@ -40,7 +40,7 @@ dt2str' (DateTime (d, m, y, _, _)) =
   let aux n = if n < 10 then '0':show n else show n
   in aux y ++ aux m ++ aux d
 
--- | Convierte un evento en un formato .ical
+-- | Convierte un evento en un formato .ics
 -- |
 event2ics :: Event -> String
 event2ics (Event s st et c r b) = 
@@ -127,6 +127,8 @@ str2tuple str =
 lookupKey :: String -> [(String, String)] -> Maybe String
 lookupKey k = fmap snd . L.find ((== k) . fst)
 
+-- | Parsea una evento en formato .ics
+-- |
 parseHoleDay :: [String] -> Maybe Event
 parseHoleDay str = do
   let ps = mapMaybe str2tuple str
@@ -137,10 +139,8 @@ parseHoleDay str = do
       et = str2dt' det
   return $ Event s st et Nothing Nothing True
 
--- | Parsea una evento en formato .ical
--- |
-parseICal :: [String] -> Maybe Event
-parseICal str = do
+parseIcs :: [String] -> Maybe Event
+parseIcs str = do
   let ps = mapMaybe str2tuple str
   dst <- lookupKey "DTSTART" ps
   det <- lookupKey "DTEND" ps
@@ -149,7 +149,7 @@ parseICal str = do
       et = str2dt det
   return $ Event s (resta3 st) (resta3 et) Nothing Nothing False
 
--- | Divide el calendario en bloques de eventos
+-- | Divide el contenido del archivo en las distintas líneas
 -- |
 splitEv :: [String] -> [[String]]
 splitEv es =
@@ -162,7 +162,7 @@ splitEv es =
 importIcs :: FilePath -> Calendar -> IO Calendar
 importIcs file (Calendar n e) = do
   cont <- fmap (L.map (L.filter (/= '\r')) . L.lines) (readFile file)
-  let es = mapMaybe parseICal (splitEv cont)
+  let es = mapMaybe parseIcs (splitEv cont)
       es' = mapMaybe parseHoleDay (splitEv cont)
   return $ Calendar n (es ++ es' ++ e)
 
